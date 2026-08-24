@@ -6,14 +6,24 @@
 // with React state, keeping the same thresholds, timings and copy.
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  ApiError,
+  forgotPassword,
+  resendOtp,
+  revealMyPerk,
+  signin as apiSignin,
+  signup as apiSignup,
+  verifyOtp,
+} from "../../lib/api";
+import { saveSession } from "../../lib/session";
 import "./signin.css";
 
-const PERKS = [
-  "Free uplighting on your first event",
-  "10% off your first booking",
-  "A complimentary highlight reel",
-  "Priority pro matching",
-];
+// Maps a server-side validation field name onto the id of the field block that
+// should turn red. The backend reports details: [{ field, message }].
+const FIELD_IDS = {
+  in: { email: "fi-email", password: "fi-pass" },
+  up: { fullName: "fu-name", email: "fu-email", password: "fu-pass" },
+};
 
 const STRENGTH_PCT = [6, 30, 55, 80, 100];
 const STRENGTH_COLS = ["#e3e1d7", "#d0492f", "#e0b341", "#97c459", "#639922"];
@@ -106,11 +116,14 @@ export default function SignInView() {
   const [upEmail, setUpEmail] = useState("");
   const [upPass, setUpPass] = useState("");
   const [tos, setTos] = useState(false);
+  // Sent to the server: it decides the refresh-token lifetime from this.
+  const [remember, setRemember] = useState(true);
 
   const [bad, setBad] = useState({});
   const [hintIn, setHintIn] = useState("");
   const [hintUp, setHintUp] = useState("");
-  const [hintOtp, setHintOtp] = useState("Demo · enter any 6 digits.");
+  const OTP_HINT_DEFAULT = "Enter the 6-digit code we sent.";
+  const [hintOtp, setHintOtp] = useState(OTP_HINT_DEFAULT);
   const [loading, setLoading] = useState(null); // "in" | "up" | "otp"
 
   const [showInPass, setShowInPass] = useState(false);
@@ -128,6 +141,9 @@ export default function SignInView() {
   const [perk, setPerk] = useState(null);
   const [perkHint, setPerkHint] = useState(null);
 
+  // Held in a ref, not state: the scratch-card effect is set up once and would
+  // otherwise capture a stale token.
+  const tokenRef = useRef(null);
   const otpRefs = useRef([]);
   const verifyRef = useRef(null);
   const inPassRef = useRef(null);
@@ -231,12 +247,24 @@ export default function SignInView() {
           cv.style.opacity = "0";
           setPerkHint("Applied to your first booking — enjoy!");
           burst();
+          // Persist the reveal so it survives a reload.
+          if (tokenRef.current) {
+            revealMyPerk(tokenRef.current).catch(() => {
+              // The gift is already on the account; a failed sync is not worth
+              // interrupting the moment for.
+            });
+          }
         }
       };
       const scr = (e) => {
         if (!down) return;
         const pt = pos(e);
         x.globalCompositeOperation = "destination-out";
+        // Must be opaque. The reference left fillStyle at the label's
+        // rgba(13,13,12,.45), so each stroke only removed 45% of the alpha and
+        // the "pixels at exactly alpha 0" test below could never pass - the card
+        // was unscratchable no matter how long you rubbed it.
+        x.fillStyle = "#000";
         x.beginPath();
         x.arc(pt.x, pt.y, 20, 0, 7);
         x.fill();
@@ -265,10 +293,12 @@ export default function SignInView() {
   }, [perk, burst]);
 
   /* ---------- flow ---------- */
-  const finish = useCallback((t) => {
+  const finish = useCallback((t, serverPerk) => {
     setStage("done");
-    if (t === "up") {
-      setPerk(PERKS[Math.floor(Math.random() * PERKS.length)]);
+    // The gift is chosen and recorded server-side, so it survives a reload and
+    // can actually be honoured against a booking.
+    if (t === "up" && serverPerk) {
+      setPerk(serverPerk.label);
       setPerkHint("");
     } else {
       setPerk(null);
@@ -276,16 +306,39 @@ export default function SignInView() {
     }
   }, []);
 
-  const showOtp = useCallback((t, email) => {
+  const showOtp = useCallback((t, email, challenge) => {
     setPendingT(t);
     setOtpEmail(email || "your email");
     setStage("otp");
     setOtp(["", "", "", "", "", ""]);
-    setResendLeft(30);
+    setResendLeft(challenge?.resendAvailableInSeconds ?? 30);
+    // With no mail provider wired up the API echoes the code when
+    // EXPOSE_DEV_CODES is on, so local runs stay testable.
+    setHintOtp(challenge?.devCode ? `Demo · your code is ${challenge.devCode}` : OTP_HINT_DEFAULT);
     requestAnimationFrame(() => otpRefs.current[0]?.focus());
   }, []);
 
-  const submit = (e, t) => {
+  /** Paints server-side field errors onto the form. Returns true if any stuck. */
+  const applyServerErrors = (err, t) => {
+    const map = FIELD_IDS[t];
+    const fields = err.fieldErrors();
+    const next = { ...bad };
+    let painted = false;
+    for (const [field, id] of Object.entries(map)) {
+      if (fields[field]) {
+        next[id] = true;
+        painted = true;
+      }
+    }
+    setBad(next);
+    if (fields.acceptTos && t === "up") {
+      setHintUp(fields.acceptTos);
+      painted = true;
+    }
+    return painted;
+  };
+
+  const submit = async (e, t) => {
     e.preventDefault();
     const email = t === "in" ? inEmail : upEmail;
     const pw = t === "in" ? inPass : upPass;
@@ -311,23 +364,48 @@ export default function SignInView() {
     setBad(next);
     if (!ok) return;
 
+    const setHint = t === "in" ? setHintIn : setHintUp;
+    setHint("");
     setLoading(t);
-    setTimeout(() => {
+    try {
+      const challenge =
+        t === "in"
+          ? await apiSignin({ email, password: pw, rememberMe: remember })
+          : await apiSignup({ fullName: upName.trim(), email, password: pw, acceptTos: true });
+      showOtp(t, email, challenge);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        // 422 carries per-field detail; anything else is a single message.
+        if (!applyServerErrors(err, t)) setHint(err.message);
+      } else {
+        setHint("Something went wrong. Try again.");
+      }
+    } finally {
       setLoading(null);
-      showOtp(t, email);
-    }, 1200);
+    }
   };
 
-  const verify = () => {
-    if (otp.join("").length < 6) {
+  const verify = async () => {
+    const code = otp.join("");
+    if (code.length < 6) {
       setHintOtp("Enter all 6 digits.");
       return;
     }
     setLoading("otp");
-    setTimeout(() => {
+    try {
+      const session = await verifyOtp({ email: otpEmail, code });
+      tokenRef.current = session.accessToken;
+      saveSession(session);
+      finish(pendingT, session.perk ?? null);
+    } catch (err) {
+      // Wrong or expired codes come back with the attempts remaining, so the
+      // server's message is more useful than anything invented here.
+      setHintOtp(err instanceof ApiError ? err.message : "Could not verify that code.");
+      setOtp(["", "", "", "", "", ""]);
+      requestAnimationFrame(() => otpRefs.current[0]?.focus());
+    } finally {
       setLoading(null);
-      finish(pendingT);
-    }, 1000);
+    }
   };
 
   /* ---------- OTP field behaviour ---------- */
@@ -384,6 +462,42 @@ export default function SignInView() {
       background: STRENGTH_COLS[s],
       label: v ? `Strength: ${STRENGTH_LABS[s]}` : STRENGTH_IDLE,
     });
+  };
+
+  const doResend = async () => {
+    try {
+      const challenge = await resendOtp(otpEmail);
+      setResendLeft(challenge?.resendAvailableInSeconds ?? 30);
+      setHintOtp(
+        challenge?.devCode ? `New code sent · ${challenge.devCode}` : "A new code is on its way.",
+      );
+    } catch (err) {
+      // A 429 carries the remaining cooldown, so mirror it in the countdown
+      // instead of letting the link stay clickable.
+      const retry = err instanceof ApiError ? err.details?.retryAfterSeconds : null;
+      if (typeof retry === "number" && retry > 0) setResendLeft(retry);
+      setHintOtp(err instanceof ApiError ? err.message : "Could not send a new code.");
+    }
+  };
+
+  const doForgot = async (e) => {
+    e.preventDefault();
+    if (!emailOk(inEmail)) {
+      setBad((b) => ({ ...b, "fi-email": true }));
+      setHintIn("Enter your email first, then tap Forgot password.");
+      return;
+    }
+    try {
+      const result = await forgotPassword(inEmail);
+      // The endpoint answers 202 whether or not the address is on file.
+      setHintIn(
+        result?.devToken
+          ? `Reset link sent · token ${result.devToken.slice(0, 12)}…`
+          : "Reset link sent — check your email.",
+      );
+    } catch (err) {
+      setHintIn(err instanceof ApiError ? err.message : "Could not send a reset link.");
+    }
   };
 
   const btn = (t, label) => (
@@ -517,16 +631,14 @@ export default function SignInView() {
                 </div>
                 <div className="row">
                   <label>
-                    <input type="checkbox" defaultChecked /> Remember me
+                    <input
+                      type="checkbox"
+                      checked={remember}
+                      onChange={(e) => setRemember(e.target.checked)}
+                    />{" "}
+                    Remember me
                   </label>
-                  <a
-                    href="#"
-                    id="forgot"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setHintIn("Reset link sent — check your email (demo).");
-                    }}
-                  >
+                  <a href="#" id="forgot" onClick={doForgot}>
                     Forgot password?
                   </a>
                 </div>
@@ -669,13 +781,7 @@ export default function SignInView() {
                 {stage !== "otp" ? null : resendLeft > 0 ? (
                   `Resend code in ${resendLeft}s`
                 ) : (
-                  <a
-                    id="rsA"
-                    onClick={() => {
-                      setHintOtp("New code sent (demo).");
-                      setResendLeft(30);
-                    }}
-                  >
+                  <a id="rsA" onClick={doResend}>
                     Resend code
                   </a>
                 )}

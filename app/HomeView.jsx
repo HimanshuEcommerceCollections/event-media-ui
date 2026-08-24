@@ -18,130 +18,46 @@ import Script from "next/script";
 import { useCallback, useEffect, useRef, useState } from "react";
 import "./home.css";
 
-const SERVICES = [
-  {
-    no: "01",
-    img: "/assets/svc-01-party-rentals.jpg",
-    alt: "Decorated event venue",
-    title: "Party rentals",
-    copy: "Chairs, tables, tents — partner-fulfilled.",
-    price: "from $1.75 / chair",
-    icon: (
-      <>
-        <path d="M12 3 3 9h18L12 3Z" />
-        <path d="M5 9v11M19 9v11M12 9v11M3 20h18" />
-      </>
-    ),
-  },
-  {
-    no: "02",
-    img: "/assets/svc-02-entertainers.jpg",
-    alt: "Face-painting entertainer",
-    title: "Entertainers",
-    copy: "Magicians, face painters and more, by the hour.",
-    price: "from $160",
-    icon: <path d="M12 2.5l2.2 5.3 5.8.5-4.4 3.8 1.3 5.6L12 20.7l-4.2 2 1.3-5.6L4.7 8.3l5.8-.5L12 2.5Z" />,
-  },
-  {
-    no: "03",
-    img: "/assets/svc-03-dj-music.jpg",
-    alt: "DJ at a party",
-    title: "DJ + music",
-    copy: "By the hour with uplighting and booth add-ons.",
-    price: "$125 / hr",
-    icon: (
-      <>
-        <circle cx="12" cy="12" r="9" />
-        <circle cx="12" cy="12" r="2.4" />
-        <path d="M12 3v3M12 18v3M3 12h3M18 12h3" />
-      </>
-    ),
-  },
-  {
-    no: "04",
-    img: "/assets/svc-04-photo-video.jpg",
-    alt: "Videographer recording",
-    title: "Photo + video",
-    copy: "From a two-hour session to a cinematic package.",
-    price: "from $395",
-    icon: (
-      <>
-        <rect x="2.5" y="6.5" width="14" height="11" rx="2.5" />
-        <path d="M16.5 10l5-2.5v9L16.5 14" />
-        <circle cx="8.5" cy="12" r="2.3" />
-      </>
-    ),
-  },
-  {
-    no: "05",
-    img: "/assets/svc-05-virtual-tours.jpg",
-    alt: "Virtual tour with VR",
-    title: "Virtual tours",
-    copy: "3D walkthroughs for realtors, by square footage.",
-    price: "from $199",
-    b2b: true,
-    icon: (
-      <>
-        <path d="M3 10.5 12 4l9 6.5" />
-        <path d="M5 9.5V20h14V9.5" />
-        <path d="M9.5 20v-5h5v5" />
-      </>
-    ),
-  },
-  {
-    no: "06",
-    img: "/assets/svc-06-drone-video.jpg",
-    alt: "Drone operator",
-    title: "Drone video",
-    copy: "Aerial footage as an add-on or standalone flight.",
-    price: "from $175",
-    b2b: true,
-    icon: (
-      <>
-        <circle cx="5" cy="6" r="2.4" />
-        <circle cx="19" cy="6" r="2.4" />
-        <rect x="9" y="10" width="6" height="4.5" rx="1.3" />
-        <path d="M6.6 7.6 9.6 11M17.4 7.6 14.4 11M12 14.5V18M9.5 18h5" />
-      </>
-    ),
-  },
-];
-
-const EVENTS = [
-  { img: "/assets/ev-01-reeves-wedding.jpg", alt: "Wedding being filmed", tot: "$6,480", nm: "The Reeves Wedding", yr: "2026" },
-  { img: "/assets/ev-02-downtown-gala.jpg", alt: "Luxury gala", tot: "$3,900", nm: "Downtown Gala", yr: "2026" },
-  { img: "/assets/ev-03-maple-st-birthday.jpg", alt: "Celebration venue", tot: "$1,240", nm: "Maple St Birthday", yr: "2026" },
-  { img: "/assets/ev-04-elm-st-listing.jpg", alt: "Listing property", tot: "$624", nm: "Elm St Listing", yr: "2026" },
-];
-
-const MARQUEE = ["Weddings", "Birthdays", "Corporate", "Galas", "Listings", "Drone"];
-
-const TESTIMONIALS = [
-  {
-    q: "One form and our whole wedding was handled — DJ, rentals, photographer, all on a single quote. I stopped emailing five vendors.",
-    name: "Jordan & Riya",
-    role: "Wedding · Raleigh",
-    av: "JR",
-  },
-  {
-    q: "The running total is the best part — I could see exactly what each add-on cost before committing. No surprises on the invoice.",
-    name: "Marcus P.",
-    role: "Corporate gala",
-    av: "MP",
-  },
-  {
-    q: "I order listing media every week now. Virtual tour plus drone in one request, delivered the next day. It's my default.",
-    name: "Sana L.",
-    role: "Realtor · B2B",
-    av: "SL",
-  },
-  {
-    q: "Booked a magician, a bounce castle and a photographer for my son's birthday in ten minutes flat. The coordinator handled the rest.",
-    name: "Priya N.",
-    role: "Kids' birthday",
-    av: "PN",
-  },
-];
+// Icons keyed the way the API reports them (services.iconKey), so the catalogue
+// can drive which frame shows which glyph. Paths are verbatim from the reference.
+const ICONS = {
+  tent: (
+    <>
+      <path d="M12 3 3 9h18L12 3Z" />
+      <path d="M5 9v11M19 9v11M12 9v11M3 20h18" />
+    </>
+  ),
+  star: <path d="M12 2.5l2.2 5.3 5.8.5-4.4 3.8 1.3 5.6L12 20.7l-4.2 2 1.3-5.6L4.7 8.3l5.8-.5L12 2.5Z" />,
+  disc: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="2.4" />
+      <path d="M12 3v3M12 18v3M3 12h3M18 12h3" />
+    </>
+  ),
+  camera: (
+    <>
+      <rect x="2.5" y="6.5" width="14" height="11" rx="2.5" />
+      <path d="M16.5 10l5-2.5v9L16.5 14" />
+      <circle cx="8.5" cy="12" r="2.3" />
+    </>
+  ),
+  house: (
+    <>
+      <path d="M3 10.5 12 4l9 6.5" />
+      <path d="M5 9.5V20h14V9.5" />
+      <path d="M9.5 20v-5h5v5" />
+    </>
+  ),
+  drone: (
+    <>
+      <circle cx="5" cy="6" r="2.4" />
+      <circle cx="19" cy="6" r="2.4" />
+      <rect x="9" y="10" width="6" height="4.5" rx="1.3" />
+      <path d="M6.6 7.6 9.6 11M17.4 7.6 14.4 11M12 14.5V18M9.5 18h5" />
+    </>
+  ),
+};
 
 // The reference splits `.split` / #heroH1 text into per-word spans at runtime and
 // stamps a 0.05s-per-word transition delay. Pre-rendered here to the same result.
@@ -181,25 +97,26 @@ function ServiceCard({ s }) {
   return (
     <a className="svc" href="#" data-cursor="view">
       <div className="scene has-img">
-        <img className="ph" src={s.img} alt={s.alt} />
+        <img className="ph" src={s.imagePath} alt={s.imageAlt} />
         <span className="no">{s.no}</span>
-        {s.b2b ? <span className="b2b">B2B</span> : null}
+        {s.isB2b ? <span className="b2b">B2B</span> : null}
         <span className="ic">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-            {s.icon}
+            {ICONS[s.iconKey] ?? null}
           </svg>
         </span>
       </div>
       <div className="body">
         <h3>{s.title}</h3>
-        <p>{s.copy}</p>
-        <span className="price">{s.price}</span>
+        <p>{s.blurb}</p>
+        <span className="price">{s.priceLabel}</span>
       </div>
     </a>
   );
 }
 
-export default function HomeView() {
+export default function HomeView({ content }) {
+  const { services, events, marquee, testimonials, stats } = content;
   const rootRef = useRef(null);
   const lenisRef = useRef(null);
   const introRef = useRef(null);
@@ -409,7 +326,7 @@ export default function HomeView() {
   /* ---------- testimonial monitor ---------- */
   const go = useCallback(
     (n) => {
-      const next = (n + TESTIMONIALS.length) % TESTIMONIALS.length;
+      const next = (n + testimonials.length) % testimonials.length;
       if (reduce) {
         setMonIdx(next);
         return;
@@ -509,10 +426,10 @@ export default function HomeView() {
     };
   }, []);
 
-  const t = TESTIMONIALS[monIdx];
+  const t = testimonials[monIdx];
   // The reference duplicates the film frames for a seamless loop unless the
   // user prefers reduced motion.
-  const filmCards = reduce ? SERVICES : [...SERVICES, ...SERVICES];
+  const filmCards = reduce ? services : [...services, ...services];
 
   return (
     <div ref={rootRef}>
@@ -660,7 +577,7 @@ export default function HomeView() {
             <div className="film-viewport">
               <div className="film-track" id="filmTrack">
                 {filmCards.map((s, i) => (
-                  <ServiceCard key={`${s.no}-${i}`} s={s} />
+                  <ServiceCard key={`${s.slug}-${i}`} s={s} />
                 ))}
               </div>
             </div>
@@ -670,7 +587,7 @@ export default function HomeView() {
 
       <div className="marq">
         <div className="marq-row">
-          {[...MARQUEE, ...MARQUEE].map((m, i) => (
+          {[...marquee, ...marquee].map((m, i) => (
             <span className="mi" key={i}>
               {m}
             </span>
@@ -764,30 +681,21 @@ export default function HomeView() {
       <section className="stats">
         <div className="wrap">
           <div className="stats-grid stagger">
-            <div className="stat">
-              <div className="n" data-count="6">
-                0
+            {stats.map((st) => (
+              <div className="stat" key={st.key}>
+                {/* The counter reads data-count / data-prefix / data-suffix off the
+                    node, so the optional attributes are only emitted when set. */}
+                <div
+                  className="n"
+                  data-count={st.value}
+                  {...(st.prefix ? { "data-prefix": st.prefix } : {})}
+                  {...(st.suffix ? { "data-suffix": st.suffix } : {})}
+                >
+                  0
+                </div>
+                <div className="k">{st.label}</div>
               </div>
-              <div className="k">services, one request</div>
-            </div>
-            <div className="stat">
-              <div className="n" data-count="1">
-                0
-              </div>
-              <div className="k">business-day reply</div>
-            </div>
-            <div className="stat">
-              <div className="n" data-count="100" data-suffix="%">
-                0
-              </div>
-              <div className="k">penny-accurate total</div>
-            </div>
-            <div className="stat">
-              <div className="n" data-prefix="$" data-count="0">
-                0
-              </div>
-              <div className="k">to submit a request</div>
-            </div>
+            ))}
           </div>
         </div>
       </section>
@@ -805,15 +713,15 @@ export default function HomeView() {
         </div>
         <div className="wrap">
           <div className={`ev-track${dragging ? " drag" : ""}`} id="evTrack" ref={evTrackRef}>
-            {EVENTS.map((e) => (
-              <div className="ev" data-cursor="view" key={e.nm}>
+            {events.map((e) => (
+              <div className="ev" data-cursor="view" key={e.slug}>
                 <div className="still">
-                  <img className="img" data-parallax="0.1" src={e.img} alt={e.alt} />
+                  <img className="img" data-parallax="0.1" src={e.imagePath} alt={e.imageAlt} />
                 </div>
-                <span className="tot">{e.tot}</span>
+                <span className="tot">{e.totalLabel}</span>
                 <div className="meta">
-                  <span className="nm">{e.nm}</span>
-                  <span className="yr">{e.yr}</span>
+                  <span className="nm">{e.name}</span>
+                  <span className="yr">{e.year}</span>
                 </div>
               </div>
             ))}
@@ -841,17 +749,17 @@ export default function HomeView() {
                 <span className="dot" /> REC
               </div>
               <div className="mon-time" id="monTime" aria-hidden="true">
-                {`0${monIdx + 1}`.slice(-2)}/0{TESTIMONIALS.length}
+                {`0${monIdx + 1}`.slice(-2)}/0{testimonials.length}
               </div>
               <div className="mon-scan" aria-hidden="true" />
               <div className="mon-content" id="monContent">
                 <div className="stars">★★★★★</div>
                 <p className="q" id="monQuote">
-                  {`“${t.q}”`}
+                  {`“${t.quote}”`}
                 </p>
                 <div className="who">
                   <span className="av" id="monAv">
-                    {t.av}
+                    {t.initials}
                   </span>
                   <div>
                     <div className="nm" id="monName">
@@ -876,7 +784,7 @@ export default function HomeView() {
                 ‹
               </button>
               <div className="mon-dots" id="monDots">
-                {TESTIMONIALS.map((_, k) => (
+                {testimonials.map((_, k) => (
                   <i
                     key={k}
                     className={k === monIdx ? "on" : undefined}

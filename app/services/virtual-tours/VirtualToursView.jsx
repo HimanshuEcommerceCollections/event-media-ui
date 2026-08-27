@@ -5,7 +5,15 @@
 // virtual-tours.css is that document's <style> block copied verbatim. The
 // reference's vanilla JS is reimplemented below with the same numbers:
 // IntersectionObserver threshold .15, nav "scrolled" at y > 40, Lenis
-// duration 1.1, magnetic offsets .25/.4.
+// duration 1.1, magnetic offsets .25/.4, the cent-based sq-ft calculator,
+// and the Three.js (r128) first-person venue walk.
+//
+// Deliberately not ported (both are no-ops in the reference itself): the
+// `.s-tour` 360-panorama viewer and `.s-lt` time-of-day light slider. Both
+// have full CSS blocks (and, for the panorama viewer, a JS module) but no
+// matching markup in the reference body — the design settled on the
+// Three.js walk as its "step inside" section and never swept up the
+// earlier iterations' leftovers. See virtual-tours.css for the same note.
 
 import Script from "next/script";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -240,12 +248,313 @@ export default function VirtualToursView() {
     });
   };
 
+  /* ---------- 3D venue walk (Three.js r128, same CDN build as the reference) ---------- */
+  const walkStageRef = useRef(null);
+  const hintRef = useRef(null);
+  const [threeReady, setThreeReady] = useState(false);
+  const [walkStatus, setWalkStatus] = useState("loading"); // loading | ready | unavailable
+  const bootedRef = useRef(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.THREE) setThreeReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!threeReady || bootedRef.current) return undefined;
+    const stage = walkStageRef.current;
+    const THREE = window.THREE;
+    if (!stage || !THREE) {
+      setWalkStatus("unavailable");
+      return undefined;
+    }
+    bootedRef.current = true;
+    setWalkStatus("ready");
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0d0d0c);
+    scene.fog = new THREE.Fog(0x0d0d0c, 16, 40);
+    const camera = new THREE.PerspectiveCamera(68, 16 / 9, 0.1, 120);
+    camera.position.set(0, 1.7, 11);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    stage.appendChild(renderer.domElement);
+
+    const size = () => {
+      const w = stage.clientWidth;
+      const h = stage.clientHeight;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    };
+    size();
+    window.addEventListener("resize", size);
+
+    const loader = new THREE.TextureLoader();
+    const tex = (u) => {
+      const t = loader.load(u);
+      t.encoding = THREE.sRGBEncoding;
+      return t;
+    };
+
+    const W = 12;
+    const D = 26;
+    const H = 6.2;
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0xefece3, roughness: 0.92 });
+
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(W, D),
+      new THREE.MeshStandardMaterial({ color: 0xe9e5d9, roughness: 0.35, metalness: 0.2 }),
+    );
+    floor.rotation.x = -Math.PI / 2;
+    scene.add(floor);
+
+    const runner = new THREE.Mesh(
+      new THREE.PlaneGeometry(3.4, D),
+      new THREE.MeshStandardMaterial({ color: 0x14120f, roughness: 0.25, metalness: 0.35 }),
+    );
+    runner.rotation.x = -Math.PI / 2;
+    runner.position.y = 0.012;
+    scene.add(runner);
+
+    const ceil = new THREE.Mesh(
+      new THREE.PlaneGeometry(W, D),
+      new THREE.MeshStandardMaterial({ color: 0xf2efe8, roughness: 0.95 }),
+    );
+    ceil.rotation.x = Math.PI / 2;
+    ceil.position.y = H;
+    scene.add(ceil);
+
+    const lw = new THREE.Mesh(new THREE.PlaneGeometry(D, H), wallMat);
+    lw.rotation.y = Math.PI / 2;
+    lw.position.set(-W / 2, H / 2, 0);
+    scene.add(lw);
+
+    const rw = new THREE.Mesh(new THREE.PlaneGeometry(D, H), wallMat);
+    rw.rotation.y = -Math.PI / 2;
+    rw.position.set(W / 2, H / 2, 0);
+    scene.add(rw);
+
+    const bw = new THREE.Mesh(new THREE.PlaneGeometry(W, H), wallMat);
+    bw.position.set(0, H / 2, D / 2);
+    bw.rotation.y = Math.PI;
+    scene.add(bw);
+
+    const ew = new THREE.Mesh(new THREE.PlaneGeometry(W, H), wallMat);
+    ew.position.set(0, H / 2, -D / 2);
+    scene.add(ew);
+
+    const frameMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(9, 5.3),
+      new THREE.MeshStandardMaterial({ color: 0x141210 }),
+    );
+    frameMesh.position.set(0, 2.7, -D / 2 + 0.05);
+    scene.add(frameMesh);
+
+    const win = new THREE.Mesh(
+      new THREE.PlaneGeometry(8.2, 4.6),
+      new THREE.MeshBasicMaterial({ map: tex(ASSET("room-window.jpg")) }),
+    );
+    win.position.set(0, 2.7, -D / 2 + 0.1);
+    scene.add(win);
+
+    const art = (map, x, z, rotY) => {
+      const g = new THREE.Group();
+      const fr = new THREE.Mesh(
+        new THREE.PlaneGeometry(3.5, 2.5),
+        new THREE.MeshStandardMaterial({ color: 0x1a1a18 }),
+      );
+      const p = new THREE.Mesh(
+        new THREE.PlaneGeometry(3.1, 2.1),
+        new THREE.MeshBasicMaterial({ map: tex(map) }),
+      );
+      p.position.z = 0.03;
+      g.add(fr);
+      g.add(p);
+      g.position.set(x, 2.6, z);
+      g.rotation.y = rotY;
+      scene.add(g);
+    };
+    art(ASSET("room-art-1.jpg"), -W / 2 + 0.08, 4, Math.PI / 2);
+    art(ASSET("room-art-2.jpg"), -W / 2 + 0.08, -3, Math.PI / 2);
+    art(ASSET("room-art-3.jpg"), W / 2 - 0.08, 4, -Math.PI / 2);
+    art(ASSET("room-art-1.jpg"), W / 2 - 0.08, -3, -Math.PI / 2);
+
+    const plinth = (x, z) => {
+      const b = new THREE.Mesh(
+        new THREE.BoxGeometry(0.7, 1.1, 0.7),
+        new THREE.MeshStandardMaterial({ color: 0xdedad0, roughness: 0.6 }),
+      );
+      b.position.set(x, 0.55, z);
+      scene.add(b);
+      const c = new THREE.Mesh(
+        new THREE.SphereGeometry(0.09, 12, 12),
+        new THREE.MeshBasicMaterial({ color: 0xffd79a }),
+      );
+      c.position.set(x, 1.2, z);
+      scene.add(c);
+      const pl = new THREE.PointLight(0xffca85, 0.5, 6);
+      pl.position.set(x, 1.3, z);
+      scene.add(pl);
+    };
+    plinth(-4.2, 7);
+    plinth(4.2, 7);
+    plinth(-4.2, -6);
+    plinth(4.2, -6);
+
+    [6, 0, -7].forEach((z) => {
+      const s = new THREE.Mesh(
+        new THREE.SphereGeometry(0.3, 16, 16),
+        new THREE.MeshBasicMaterial({ color: 0xffe9c6 }),
+      );
+      s.position.set(0, 5.2, z);
+      scene.add(s);
+      const pl = new THREE.PointLight(0xffe0b0, 0.9, 18);
+      pl.position.set(0, 5, z);
+      scene.add(pl);
+    });
+
+    scene.add(new THREE.AmbientLight(0xfff2e0, 0.55));
+    const day = new THREE.PointLight(0xcfe2ff, 1.4, 34);
+    day.position.set(0, 3, -9);
+    scene.add(day);
+
+    let yaw = 0;
+    let pitch = 0;
+    const keys = {};
+    let dragging = false;
+    let px = 0;
+    let py = 0;
+    let active = false;
+    let moved = false;
+    let raf = 0;
+    let stopped = false;
+
+    const onPointerDown = (e) => {
+      dragging = true;
+      px = e.clientX;
+      py = e.clientY;
+      stage.classList.add("drag");
+      try {
+        stage.setPointerCapture(e.pointerId);
+      } catch {
+        // Safari/older browsers may not support pointer capture — dragging
+        // still works via the window-level pointermove.
+      }
+    };
+    const fade = () => {
+      if (!moved) {
+        moved = true;
+        if (hintRef.current) hintRef.current.style.opacity = "0";
+      }
+    };
+    const onPointerMove = (e) => {
+      if (!dragging) return;
+      yaw -= (e.clientX - px) * 0.005;
+      pitch -= (e.clientY - py) * 0.005;
+      pitch = Math.max(-0.9, Math.min(0.9, pitch));
+      px = e.clientX;
+      py = e.clientY;
+      fade();
+    };
+    const onPointerUp = () => {
+      dragging = false;
+      stage.classList.remove("drag");
+    };
+    const onMouseEnter = () => {
+      active = true;
+    };
+    const onMouseLeave = () => {
+      active = false;
+    };
+    const onKeyDown = (e) => {
+      if (!active) return;
+      const k = e.key.toLowerCase();
+      keys[k] = true;
+      if (["arrowup", "arrowdown", "arrowleft", "arrowright"].indexOf(k) >= 0) e.preventDefault();
+      fade();
+    };
+    const onKeyUp = (e) => {
+      keys[e.key.toLowerCase()] = false;
+    };
+
+    stage.addEventListener("pointerdown", onPointerDown);
+    stage.addEventListener("pointermove", onPointerMove);
+    stage.addEventListener("pointerup", onPointerUp);
+    stage.addEventListener("pointerleave", onPointerUp);
+    stage.addEventListener("mouseenter", onMouseEnter);
+    stage.addEventListener("mouseleave", onMouseLeave);
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+
+    const frame3 = () => {
+      if (stopped) return;
+      const sp = 0.075;
+      const fx = Math.sin(yaw);
+      const fz = -Math.cos(yaw);
+      const rx = Math.cos(yaw);
+      const rz = Math.sin(yaw);
+      if (active) {
+        if (keys.w || keys.arrowup) {
+          camera.position.x += fx * sp;
+          camera.position.z += fz * sp;
+        }
+        if (keys.s || keys.arrowdown) {
+          camera.position.x -= fx * sp;
+          camera.position.z -= fz * sp;
+        }
+        if (keys.a || keys.arrowleft) {
+          camera.position.x -= rx * sp;
+          camera.position.z -= rz * sp;
+        }
+        if (keys.d || keys.arrowright) {
+          camera.position.x += rx * sp;
+          camera.position.z += rz * sp;
+        }
+      }
+      camera.position.x = Math.max(-W / 2 + 0.8, Math.min(W / 2 - 0.8, camera.position.x));
+      camera.position.z = Math.max(-D / 2 + 1.2, Math.min(D / 2 - 1, camera.position.z));
+      const cp = Math.cos(pitch);
+      camera.lookAt(
+        camera.position.x + Math.sin(yaw) * cp,
+        camera.position.y + Math.sin(pitch),
+        camera.position.z - Math.cos(yaw) * cp,
+      );
+      renderer.render(scene, camera);
+      raf = requestAnimationFrame(frame3);
+    };
+    frame3();
+
+    return () => {
+      stopped = true;
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", size);
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+      stage.removeEventListener("pointerdown", onPointerDown);
+      stage.removeEventListener("pointermove", onPointerMove);
+      stage.removeEventListener("pointerup", onPointerUp);
+      stage.removeEventListener("pointerleave", onPointerUp);
+      stage.removeEventListener("mouseenter", onMouseEnter);
+      stage.removeEventListener("mouseleave", onMouseLeave);
+      renderer.dispose();
+      if (renderer.domElement.parentNode === stage) stage.removeChild(renderer.domElement);
+      bootedRef.current = false;
+    };
+  }, [threeReady]);
+
   return (
     <div ref={rootRef}>
       <Script
         src="https://cdnjs.cloudflare.com/ajax/libs/lenis/1.1.13/lenis.min.js"
         strategy="afterInteractive"
         onLoad={initLenis}
+      />
+      <Script
+        src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"
+        strategy="afterInteractive"
+        onLoad={() => setThreeReady(true)}
+        onError={() => setWalkStatus("unavailable")}
       />
 
       <div className="demo">
@@ -456,6 +765,38 @@ export default function VirtualToursView() {
                 </ul>
               </div>
             </aside>
+          </div>
+        </div>
+      </section>
+
+      <section className="s-walk" id="walk">
+        <div className="wrap">
+          <div className="booth-head rise">
+            <p className="eyebrow">Step inside</p>
+            <h2>Walk the venue</h2>
+            <p className="sub">
+              Explore the hall in real-time 3D — drag to look around, and use W A S D or the arrow
+              keys to walk toward the light. This is what a tour really feels like.
+            </p>
+          </div>
+          <div className="walk-stage rise" ref={walkStageRef}>
+            <div className="walk-badge">
+              <b>●</b> The Grand Hall · live 3D
+            </div>
+            <div className="walk-keys">
+              <span>W</span>
+              <span>A</span>
+              <span>S</span>
+              <span>D</span>
+            </div>
+            <div className="walk-hint" ref={hintRef}>
+              drag to look · W A S D / arrows to move
+            </div>
+            {walkStatus !== "ready" && (
+              <div className="walk-load">
+                {walkStatus === "unavailable" ? "3D unavailable" : "entering the hall…"}
+              </div>
+            )}
           </div>
         </div>
       </section>

@@ -5,7 +5,8 @@
 // photo-video.css is that document's <style> block copied verbatim. The
 // reference's vanilla JS is reimplemented below with the same numbers:
 // IntersectionObserver threshold .15, nav "scrolled" at y > 40, Lenis
-// duration 1.1 and magnetic offsets .25/.4.
+// duration 1.1, magnetic offsets .25/.4 and the cent-based package
+// calculator.
 
 import Script from "next/script";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -79,6 +80,32 @@ const FAQS = [
     a: "Yes — note it in your request and we’ll price it in.",
   },
 ];
+
+// cents, exactly as the reference's #pvPacks data-price buttons.
+const PACKS = [
+  { name: "Photo · 2 hrs", price: 39500 },
+  { name: "Photo · 4 hrs", price: 69500 },
+  { name: "Photo + video", price: 125000 },
+  { name: "Cinematic package", price: 210000 },
+];
+
+// cents, exactly as the reference's #pvAdd data-add buttons.
+const ADDONS = [
+  { name: "Second shooter", price: 30000 },
+  { name: "Drone footage", price: 25000 },
+  { name: "Same-day teaser", price: 18000 },
+  { name: "Prints + album", price: 22000 },
+];
+
+const INCLUDED = [
+  "Edited online gallery",
+  "Print & share release",
+  "Backup shooter on standby",
+  "Delivered in 5 business days",
+];
+
+const money = (c) =>
+  `$${(c / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 const ASSET = (name) => `/assets/photo-video/${name}`;
 
@@ -182,6 +209,21 @@ export default function PhotoVideoView() {
           e.currentTarget.style.transform = "";
         },
       };
+
+  /* ---------- package calculator ---------- */
+  const [packIdx, setPackIdx] = useState(0);
+  const [addonsOn, setAddonsOn] = useState(() => new Set());
+
+  const total = PACKS[packIdx].price + [...addonsOn].reduce((sum, i) => sum + ADDONS[i].price, 0);
+
+  const toggleAddon = (i) => {
+    setAddonsOn((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
+      return next;
+    });
+  };
 
   /* ---------- FAQ ---------- */
   const faqRefs = useRef([]);
@@ -342,6 +384,78 @@ export default function PhotoVideoView() {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="s-price" id="pricing">
+        <div className="wrap">
+          <div className="head rise">
+            <div>
+              <p className="eyebrow">Sample pricing</p>
+              <h2 style={{ marginTop: "10px" }}>Priced up front</h2>
+            </div>
+            <span style={{ fontFamily: "var(--fmono)", fontSize: "12px", color: "var(--tx3)" }}>
+              [ sample · USD ]
+            </span>
+          </div>
+          <div className="pv-grid rise">
+            <div className="pv-calc">
+              <div className="pv-sub">Choose a package</div>
+              <div className="pv-packs">
+                {PACKS.map((p, i) => (
+                  <button
+                    type="button"
+                    key={p.name}
+                    className={`pv-pack${packIdx === i ? " on" : ""}`}
+                    onClick={() => setPackIdx(i)}
+                  >
+                    <span className="nm">{p.name}</span>
+                    <span className="pr">{money(p.price)}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="pv-sub">Add-ons</div>
+              <div className="addons">
+                {ADDONS.map((a, i) => (
+                  <div
+                    key={a.name}
+                    className={`addon${addonsOn.has(i) ? " on" : ""}`}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => toggleAddon(i)}
+                    onKeyDown={(e) => {
+                      if (e.key !== " " && e.key !== "Enter") return;
+                      e.preventDefault();
+                      toggleAddon(i);
+                    }}
+                  >
+                    <span className="nm">{a.name}</span>
+                    <span className="rt">
+                      <span className="pr">+{money(a.price)}</span>
+                      <span className="chk">
+                        <span>✓</span>
+                      </span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="calc-total">
+                <span className="lbl">Estimated total</span>
+                <span className="amt">{money(total)}</span>
+              </div>
+            </div>
+            <aside className="pv-aside">
+              <img src={ASSET("pv-aside.jpg")} alt="Photographer at an event" />
+              <div className="pv-inc">
+                <h4>Every booking includes</h4>
+                <ul>
+                  {INCLUDED.map((li) => (
+                    <li key={li}>{li}</li>
+                  ))}
+                </ul>
+              </div>
+            </aside>
           </div>
         </div>
       </section>

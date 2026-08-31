@@ -5,8 +5,20 @@
 // drone-video.css is that document's <style> block copied verbatim. The
 // reference's vanilla JS is reimplemented below with the same numbers:
 // IntersectionObserver threshold .15, nav "scrolled" at y > 40, Lenis
-// duration 1.1, magnetic offsets .25/.4 and the cent-based flight
-// calculator.
+// duration 1.1, magnetic offsets .25/.4, the cent-based flight calculator,
+// and the FPV cockpit HUD (46px compass cells, playbackRate .5 + v*1.7,
+// heading 4 + v*22 deg/s, battery drain .25 + v*.5 %/s with an 18% floor).
+//
+// Deliberately not ported (a no-op in the reference itself): the `.s-fly`
+// click-to-plot flight-mission planner. It has a full CSS block and a JS
+// module, but no matching markup in the reference body — the design settled
+// on the FPV cockpit as its signature section and never swept up the earlier
+// iteration. That JS bails on the missing `#flyMap`, so the reference renders
+// exactly what this component does. See drone-video.css for the same note.
+//
+// The cockpit HUD writes through refs rather than state on purpose: the
+// reference repaints five readouts every animation frame, and routing that
+// through React state would re-render the page 60 times a second.
 
 import Script from "next/script";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -102,8 +114,20 @@ const INCLUDED = [
   "Edited reel on request",
 ];
 
+// Two loops of 0..345 in 15° steps, so the strip wraps without a seam.
+const compassLabel = (d) =>
+  d === 0 ? "N" : d === 90 ? "E" : d === 180 ? "S" : d === 270 ? "W" : String(d);
+
+const COMPASS_TICKS = [0, 1].flatMap((loop) =>
+  Array.from({ length: 24 }, (_, i) => ({ key: `${loop}-${i}`, deg: i * 15 })),
+);
+const COMPASS_CELL = 46; // px per tick, matching .fpv-comp-strip span
+const COMPASS_LOOP = 24 * COMPASS_CELL;
+
 const money = (c) =>
   `$${(c / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+const pad = (n) => (n < 10 ? `0${n}` : String(n));
 
 const ASSET = (name) => `/assets/drone-video/${name}`;
 
@@ -238,6 +262,73 @@ export default function DroneVideoView() {
       return next;
     });
   };
+
+  /* ---------- FPV cockpit ---------- */
+  const [throttle, setThrottle] = useState(32);
+  const throttleRef = useRef(32);
+  const vidRef = useRef(null);
+  const compRef = useRef(null);
+  const horizRef = useRef(null);
+  const altRef = useRef(null);
+  const spdRef = useRef(null);
+  const batRef = useRef(null);
+  const tcRef = useRef(null);
+  const gpsRef = useRef(null);
+
+  // playbackRate: hover .5 → full throttle 2.2, as in the reference.
+  useEffect(() => {
+    throttleRef.current = throttle;
+    if (vidRef.current) vidRef.current.playbackRate = 0.5 + (throttle / 100) * 1.7;
+  }, [throttle]);
+
+  useEffect(() => {
+    if (reduce) return undefined;
+    let raf = 0;
+    let last = performance.now();
+    let t = 0;
+    let heading = 20;
+    let bat = 96;
+
+    const frame = (now) => {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      t += dt;
+      const v = throttleRef.current / 100;
+
+      heading += (4 + v * 22) * dt;
+      const strip = compRef.current;
+      if (strip?.parentElement) {
+        const cx = strip.parentElement.clientWidth / 2;
+        const x = cx - (((heading / 15) * COMPASS_CELL) % COMPASS_LOOP) - COMPASS_CELL / 2;
+        strip.style.transform = `translateX(${x}px)`;
+      }
+
+      const roll = Math.sin(t * 0.7) * 4 + Math.sin(t * 1.9) * 1.5;
+      if (horizRef.current) {
+        horizRef.current.style.transform = `translate(-50%,-50%) rotate(${roll.toFixed(2)}deg)`;
+      }
+
+      if (altRef.current) altRef.current.textContent = `${Math.round(72 + Math.sin(t * 0.5) * 9)} m`;
+      if (spdRef.current) spdRef.current.textContent = `${Math.round(20 + v * 92)} km/h`;
+
+      bat -= dt * (0.25 + v * 0.5);
+      if (bat < 18) bat = 18;
+      if (batRef.current) batRef.current.textContent = `${Math.round(bat)}%`;
+
+      const s = Math.floor(vidRef.current?.currentTime || 0);
+      if (tcRef.current) tcRef.current.textContent = `${pad(Math.floor(s / 60))}:${pad(s % 60)}`;
+
+      if (gpsRef.current) {
+        const lat = (50.8225 + Math.sin(t * 0.3) * 0.004).toFixed(4);
+        const lon = (0.1372 + Math.cos(t * 0.3) * 0.004).toFixed(4);
+        gpsRef.current.textContent = `${lat}° N, ${lon}° W · Brighton`;
+      }
+
+      raf = requestAnimationFrame(frame);
+    };
+    raf = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(raf);
+  }, [reduce]);
 
   return (
     <div ref={rootRef}>
@@ -456,6 +547,79 @@ export default function DroneVideoView() {
                 </ul>
               </div>
             </aside>
+          </div>
+        </div>
+      </section>
+
+      <section className="s-fpv" id="fpv">
+        <div className="wrap">
+          <div className="booth-head rise">
+            <p className="eyebrow">In the pilot’s seat</p>
+            <h2>Fly it FPV</h2>
+          </div>
+          <div className="fpv rise">
+            <div className="fpv-stage">
+              <video ref={vidRef} autoPlay muted loop playsInline poster={ASSET("fpv-poster.jpg")}>
+                <source src={ASSET("fpv-bg.mp4")} type="video/mp4" />
+              </video>
+              <div className="fpv-hud">
+                <span className="fpv-cor tl" />
+                <span className="fpv-cor tr" />
+                <span className="fpv-cor bl" />
+                <span className="fpv-cor br" />
+                <div className="fpv-compass">
+                  <div className="fpv-comp-strip" ref={compRef}>
+                    {COMPASS_TICKS.map((tick) => (
+                      <span key={tick.key} className={tick.deg % 90 === 0 ? "card" : undefined}>
+                        {compassLabel(tick.deg)}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div className="fpv-comp-cur" />
+                <div className="fpv-horizon" ref={horizRef}>
+                  <span className="line" />
+                  <span className="tick l" />
+                  <span className="tick r" />
+                </div>
+                <div className="fpv-cross" />
+                <div className="fpv-tl">
+                  <div className="fpv-cell">
+                    <k>ALT</k>
+                    <v ref={altRef}>78 m</v>
+                  </div>
+                  <div className="fpv-cell">
+                    <k>SPD</k>
+                    <v ref={spdRef}>42 km/h</v>
+                  </div>
+                </div>
+                <div className="fpv-tr">
+                  <div className="fpv-rec">
+                    <i />
+                    REC <span ref={tcRef}>00:00</span>
+                  </div>
+                  <div className="fpv-cell">
+                    <k>BAT</k>
+                    <v ref={batRef}>96%</v>
+                  </div>
+                </div>
+                <div className="fpv-gps" ref={gpsRef}>
+                  50.8225° N, 0.1372° W · Brighton
+                </div>
+              </div>
+            </div>
+            <div className="fpv-throttle">
+              <span>Hover</span>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={throttle}
+                aria-label="throttle"
+                onChange={(e) => setThrottle(Number(e.target.value))}
+              />
+              <span>Full throttle</span>
+            </div>
           </div>
         </div>
       </section>

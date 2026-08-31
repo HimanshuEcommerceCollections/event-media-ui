@@ -5,8 +5,23 @@
 // photo-video.css is that document's <style> block copied verbatim. The
 // reference's vanilla JS is reimplemented below with the same numbers:
 // IntersectionObserver threshold .15, nav "scrolled" at y > 40, Lenis
-// duration 1.1, magnetic offsets .25/.4 and the cent-based package
-// calculator.
+// duration 1.1, magnetic offsets .25/.4, the cent-based package calculator,
+// and the pinned scroll gallery (80vh of track per frame, shutter fx on
+// every frame change, timecode ticking at 8fps).
+//
+// Deliberately not ported (all three are no-ops in the reference itself):
+// the `.s-vf` viewfinder with look/aspect chips, the `.s-cs` contact sheet
+// with a magnifying loupe, and the `.s-gal` image strip. Each has a full CSS
+// block — and the first two a JS module — with no matching markup in the
+// reference body; the design settled on the pinned gallery as its signature
+// section and never swept up the earlier iterations. Their JS bails on the
+// missing `#vfMedia` / `#csSheet`, so the reference renders exactly what this
+// component does. See photo-video.css for the same note.
+//
+// The gallery drives the pin class, timecode and shutter fx through refs
+// rather than state: those change on every scroll frame, and routing them
+// through React would re-render the page continuously. Only the frame index
+// — which changes a handful of times per scroll — is state.
 
 import Script from "next/script";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -104,8 +119,40 @@ const INCLUDED = [
   "Delivered in 5 business days",
 ];
 
+// One entry per gallery frame: image, caption, and the EXIF row the HUD
+// paints — same order and values as the reference's CAPS / EXIF arrays.
+const FRAMES = [
+  {
+    img: "gallery-1.jpg",
+    cap: "On set · the shoot",
+    exif: { lens: "35mm", ap: "f/1.8", sh: "1/160", iso: "400", wb: "5600K" },
+  },
+  {
+    img: "gallery-2.jpg",
+    cap: "Sparkler · golden hour",
+    exif: { lens: "50mm", ap: "f/2.0", sh: "1/125", iso: "800", wb: "3200K" },
+  },
+  {
+    img: "gallery-3.jpg",
+    cap: "Confetti · costume party",
+    exif: { lens: "24mm", ap: "f/2.8", sh: "1/250", iso: "640", wb: "5200K" },
+  },
+  {
+    img: "gallery-4.jpg",
+    cap: "Lifestyle · candid",
+    exif: { lens: "85mm", ap: "f/1.4", sh: "1/320", iso: "200", wb: "5000K" },
+  },
+  {
+    img: "gallery-5.jpg",
+    cap: "Nightlife · the after-party",
+    exif: { lens: "35mm", ap: "f/1.6", sh: "1/100", iso: "1600", wb: "3000K" },
+  },
+];
+
 const money = (c) =>
   `$${(c / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+const pad = (n) => (n < 10 ? `0${n}` : String(n));
 
 const ASSET = (name) => `/assets/photo-video/${name}`;
 
@@ -240,6 +287,90 @@ export default function PhotoVideoView() {
       return next;
     });
   };
+
+  /* ---------- pinned scroll gallery ---------- */
+  const N = FRAMES.length;
+  const trackRef = useRef(null);
+  const pinRef = useRef(null);
+  const flashRef = useRef(null);
+  const bladeTopRef = useRef(null);
+  const bladeBotRef = useRef(null);
+  const tcRef = useRef(null);
+
+  const [active, setActive] = useState(0);
+  const activeRef = useRef(0);
+
+  // Re-triggers the CSS animations by removing the class and forcing a reflow,
+  // exactly as the reference's shoot().
+  const shoot = useCallback(() => {
+    [flashRef.current, bladeTopRef.current, bladeBotRef.current].forEach((el) => {
+      if (!el) return;
+      el.classList.remove("fire");
+      void el.offsetWidth;
+      el.classList.add("fire");
+    });
+  }, []);
+
+  useEffect(() => {
+    const track = trackRef.current;
+    const pin = pinRef.current;
+    if (!track || !pin) return undefined;
+
+    const update = () => {
+      const r = track.getBoundingClientRect();
+      const vh = window.innerHeight;
+      const span = track.offsetHeight - vh;
+
+      if (r.top <= 0 && r.bottom >= vh) {
+        pin.classList.add("fixed");
+        pin.classList.remove("bottom");
+      } else if (r.bottom < vh) {
+        pin.classList.remove("fixed");
+        pin.classList.add("bottom");
+      } else {
+        pin.classList.remove("fixed", "bottom");
+      }
+
+      let p = span > 0 ? -r.top / span : 0;
+      p = Math.min(1, Math.max(0, p));
+      const i = Math.round(p * (N - 1));
+      if (i !== activeRef.current) {
+        activeRef.current = i;
+        setActive(i);
+        shoot();
+      }
+    };
+
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    update();
+    return () => {
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, [N, shoot]);
+
+  // Free-running timecode, 8 ticks a second as in the reference.
+  useEffect(() => {
+    let fr = 0;
+    const id = setInterval(() => {
+      fr += 1;
+      const s = fr % 60;
+      const m = Math.floor(fr / 60) % 60;
+      const f = Math.floor((fr * 7) % 24);
+      if (tcRef.current) tcRef.current.textContent = `${pad(m)}:${pad(s)}:${pad(f)}`;
+    }, 1000 / 8);
+    return () => clearInterval(id);
+  }, []);
+
+  const scrollToIndex = (i) => {
+    const track = trackRef.current;
+    if (!track) return;
+    const span = track.offsetHeight - window.innerHeight;
+    window.scrollTo({ top: track.offsetTop + (i / (N - 1)) * span, behavior: "smooth" });
+  };
+
+  const exif = FRAMES[active].exif;
 
   return (
     <div ref={rootRef}>
@@ -456,6 +587,78 @@ export default function PhotoVideoView() {
                 </ul>
               </div>
             </aside>
+          </div>
+        </div>
+      </section>
+
+      <section className="s-cf" id="coverflow">
+        <div className="cf-track" ref={trackRef} style={{ height: `${N * 80}vh` }}>
+          <div className="cf-pin" ref={pinRef}>
+            <div className="cf-imgs">
+              {FRAMES.map((f, i) => (
+                <img key={f.img} src={ASSET(f.img)} className={i === active ? "on" : undefined} alt="" />
+              ))}
+            </div>
+            <div className="cf-veil" />
+            <div className="cf-head">
+              <p className="eyebrow">The gallery</p>
+              <h2>Flip through the set</h2>
+              <p className="sub">Scroll down — the frame changes with the click of the shutter.</p>
+            </div>
+            <div className="cf-foot">
+              <div className="cf-count">
+                {pad(active + 1)} / {pad(N)}
+              </div>
+              <div className="cf-cap">{FRAMES[active].cap}</div>
+              <div className="cf-dots">
+                {FRAMES.map((f, i) => (
+                  <i
+                    key={f.img}
+                    className={i === active ? "on" : undefined}
+                    onClick={() => scrollToIndex(i)}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="cf-hud">
+              <div className="cf-rec">
+                <i />
+                REC · <span ref={tcRef}>00:00:00</span>
+              </div>
+              <div className="cf-cam">A‑CAM · 4K · 24fps</div>
+              <div className="cf-specs">
+                <div className="row">
+                  <span className="k">LENS</span>
+                  <span className="v">{exif.lens}</span>
+                </div>
+                <div className="row">
+                  <span className="k">APERTURE</span>
+                  <span className="v">{exif.ap}</span>
+                </div>
+                <div className="row">
+                  <span className="k">SHUTTER</span>
+                  <span className="v">{exif.sh}</span>
+                </div>
+                <div className="row">
+                  <span className="k">ISO</span>
+                  <span className="v">{exif.iso}</span>
+                </div>
+                <div className="row">
+                  <span className="k">WB</span>
+                  <span className="v">{exif.wb}</span>
+                </div>
+              </div>
+            </div>
+            <span className="cf-cor tl" />
+            <span className="cf-cor tr" />
+            <span className="cf-cor bl" />
+            <span className="cf-cor br" />
+            <div className="cf-fx">
+              <div className="cf-blade top" ref={bladeTopRef} />
+              <div className="cf-blade bot" ref={bladeBotRef} />
+              <div className="cf-flash" ref={flashRef} />
+            </div>
+            <div className="cf-scrollcue">scroll ↓</div>
           </div>
         </div>
       </section>

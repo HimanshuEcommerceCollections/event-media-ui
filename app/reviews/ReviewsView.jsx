@@ -5,15 +5,15 @@
 // reference's vanilla JS is reimplemented below with the same numbers:
 // reveal IntersectionObserver threshold .14, nav "scrolled" at y > 30,
 // the rating bars + count-ups firing once at threshold .3 on the rate card
-// (1300ms, 1-(1-p)³ easing), and the spotlight carousel at 5500ms
-// with a 180ms quote cross-fade.
+// (1300ms, 1-(1-p)³ easing), the spotlight carousel at 5500ms with a
+// 180ms quote cross-fade, and the FLIP filter at .5s var(--ease).
 //
 // Link mapping follows the other ported pages: the reference's relative
 // document links become app routes — home and "Build my event" → "/", the
 // services menu → "/services/*", Events/About → the matching landing page
 // anchors.
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import "./reviews.css";
 
 const Logo = () => (
@@ -110,6 +110,139 @@ const MARQUEE = [
   { img: "marq-film-night.jpg", label: "Film night" },
 ];
 
+const FILTERS = [
+  { f: "all", label: "All" },
+  { f: "party", label: "Party rentals" },
+  { f: "ent", label: "Entertainers" },
+  { f: "dj", label: "DJ + music" },
+  { f: "photo", label: "Photo + video" },
+  { f: "tours", label: "Virtual tours" },
+  { f: "drone", label: "Drone video" },
+];
+
+const REVIEWS = [
+  {
+    cat: "party",
+    av: "#639922",
+    ini: "PM",
+    name: "Priya & Marcus",
+    tag: "Party rentals",
+    st: 5,
+    txt: "One request and our whole backyard wedding came together — tables, lounge, string lights, all set up before we arrived. Effortless.",
+    when: "June · verified",
+  },
+  {
+    cat: "dj",
+    av: "#e0b341",
+    ini: "AK",
+    name: "Aisha K.",
+    tag: "DJ + music",
+    st: 5,
+    txt: "The DJ read the room perfectly — the dance floor did not empty once all night!",
+    when: "April · verified",
+  },
+  {
+    cat: "ent",
+    av: "#6fb0d6",
+    ini: "TD",
+    name: "The Delgado Family",
+    tag: "Entertainers",
+    st: 5,
+    txt: "The magician had our kids (and honestly the adults) completely speechless.",
+    when: "May · verified",
+  },
+  {
+    cat: "tours",
+    av: "#e79ab5",
+    ini: "NR",
+    name: "Northside Realty",
+    tag: "Virtual tours",
+    st: 5,
+    txt: "Our listings sell faster with the 3D tours, and the volume pricing is a real win.",
+    when: "ongoing · verified",
+  },
+  {
+    cat: "photo",
+    av: "#e8934b",
+    ini: "TR",
+    name: "Tom & Riley",
+    tag: "Photo + video",
+    st: 5,
+    txt: "Edited gallery back in three days, and the drone shots were unreal.",
+    when: "March · verified",
+  },
+  {
+    cat: "drone",
+    av: "#8a7bd8",
+    ini: "CC",
+    name: "Cardinal Coworking",
+    tag: "Drone video",
+    st: 4,
+    txt: "Aerials made our launch video pop. Booking was smooth and the pilot was a pro.",
+    when: "Feb · verified",
+  },
+  {
+    cat: "party",
+    av: "#3b9a8f",
+    ini: "BM",
+    name: "Bianca M.",
+    tag: "Party rentals",
+    st: 5,
+    txt: "Chairs, tables, lighting — delivered and set up before I even got there. Spotless!",
+    when: "July · verified",
+  },
+  {
+    cat: "ent",
+    av: "#d96a5b",
+    ini: "GH",
+    name: "Grace H.",
+    tag: "Entertainers",
+    st: 5,
+    txt: "A face painter and balloon artist kept thirty kids happy for hours. Lifesavers.",
+    when: "June · verified",
+  },
+  {
+    cat: "dj",
+    av: "#639922",
+    ini: "EH",
+    name: "Elm Street HOA",
+    tag: "DJ + music",
+    st: 5,
+    txt: "Booked, matched and done in minutes. The whole neighborhood loved it.",
+    when: "May · verified",
+  },
+  {
+    cat: "photo",
+    av: "#e0b341",
+    ini: "DS",
+    name: "Devon & Sam",
+    tag: "Photo + video",
+    st: 5,
+    txt: "Every candid moment captured beautifully. Worth every single penny.",
+    when: "October · verified",
+  },
+  {
+    cat: "tours",
+    av: "#6fb0d6",
+    ini: "HG",
+    name: "Harbor Group",
+    tag: "Virtual tours",
+    st: 5,
+    txt: "Buyers walk the space before they ever visit. An absolute game changer.",
+    when: "ongoing · verified",
+  },
+  {
+    cat: "drone",
+    av: "#e79ab5",
+    ini: "LP",
+    name: "Lena P.",
+    tag: "Drone video",
+    st: 5,
+    txt: "The sunset flyover of our venue gave every guest chills. Stunning.",
+    when: "September · verified",
+  },
+];
+
 // Lit stars, then the remainder greyed out by `.off` — the reference's markup.
 const stars = (n) => (
   <>
@@ -123,11 +256,14 @@ export default function ReviewsView() {
   const navRef = useRef(null);
   const rateCardRef = useRef(null);
   const statRefs = useRef([]);
+  const cardRefs = useRef([]);
   const quoteRef = useRef(null);
+  const firstRects = useRef(null);
   const countedRef = useRef(false);
 
   const [dropOpen, setDropOpen] = useState(false);
   const [barsOn, setBarsOn] = useState(false);
+  const [filter, setFilter] = useState("all");
   const [cur, setCur] = useState(0);
   const [shown, setShown] = useState(0);
 
@@ -227,7 +363,39 @@ export default function ReviewsView() {
 
   const go = useCallback((i) => setCur((i + SPOTLIGHT.length) % SPOTLIGHT.length), []);
 
+  /* ---------- wall filter, FLIP-animated ---------- */
+  const applyFilter = useCallback((f) => {
+    const first = new Map();
+    cardRefs.current.forEach((el, i) => {
+      if (el) first.set(i, el.getBoundingClientRect());
+    });
+    firstRects.current = first;
+    setFilter(f);
+  }, []);
+
+  useLayoutEffect(() => {
+    const first = firstRects.current;
+    if (!first) return;
+    firstRects.current = null;
+    cardRefs.current.forEach((el, i) => {
+      if (!el || el.style.display === "none") return;
+      const fr = first.get(i);
+      if (!fr) return;
+      const last = el.getBoundingClientRect();
+      const dx = fr.left - last.left;
+      const dy = fr.top - last.top;
+      if (!dx && !dy) return;
+      el.style.transition = "none";
+      el.style.transform = `translate(${dx}px,${dy}px)`;
+      requestAnimationFrame(() => {
+        el.style.transition = "transform .5s var(--ease)";
+        el.style.transform = "";
+      });
+    });
+  }, [filter]);
+
   const spot = SPOTLIGHT[shown];
+  const visible = REVIEWS.filter((r) => filter === "all" || r.cat === filter).length;
 
   return (
     <div ref={rootRef}>
@@ -403,6 +571,59 @@ export default function ReviewsView() {
                 </div>
               )),
             )}
+          </div>
+        </div>
+      </section>
+
+      <section className="rv-wall-sec">
+        <div className="wrap">
+          <div className="rv-head rise">
+            <p className="eyebrow">Straight from the inbox</p>
+            <h2>What clients tell us</h2>
+          </div>
+          <div className="rv-filter rise">
+            {FILTERS.map((f) => (
+              <button
+                type="button"
+                key={f.f}
+                className={filter === f.f ? "on" : ""}
+                onClick={() => applyFilter(f.f)}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+          <div className="rv-grid">
+            {REVIEWS.map((r, i) => (
+              <article
+                // The reference alternates sent/received down the authored
+                // order, and keeps that order when filtering (hidden cards
+                // stay in the DOM), so parity is the index, not the position.
+                className={`rv-card bub${i % 2 ? " sent" : ""}`}
+                key={`${r.name}-${r.tag}`}
+                data-cat={r.cat}
+                style={filter === "all" || r.cat === filter ? undefined : { display: "none" }}
+                ref={(el) => {
+                  cardRefs.current[i] = el;
+                }}
+              >
+                <div className="bub-av" style={{ background: r.av }}>
+                  {r.ini}
+                </div>
+                <div className="bub-msg">
+                  <div className="bub-name">
+                    {r.name} <i className="chk">✓</i>
+                    <span className="bub-tag">{r.tag}</span>
+                  </div>
+                  <div className="bub-stars">{stars(r.st)}</div>
+                  <p className="bub-txt">{r.txt}</p>
+                  <div className="bub-time">{r.when}</div>
+                </div>
+              </article>
+            ))}
+          </div>
+          <div className="rv-empty" style={visible ? undefined : { display: "block" }}>
+            No reviews in this category yet.
           </div>
         </div>
       </section>

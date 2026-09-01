@@ -5,8 +5,9 @@
 // reference's vanilla JS is reimplemented below with the same numbers:
 // reveal IntersectionObserver threshold .14, nav "scrolled" at y > 30,
 // the rating bars + count-ups firing once at threshold .3 on the rate card
-// (1300ms, 1-(1-p)³ easing), the spotlight carousel at 5500ms with a
-// 180ms quote cross-fade, and the FLIP filter at .5s var(--ease).
+// (1300ms, 1-(1-p)³ easing), the spotlight carousel at 5500ms with a 180ms
+// quote cross-fade, the FLIP filter at .5s var(--ease), and the 120-particle
+// confetti burst (gravity .25, alpha -.01/frame).
 //
 // Link mapping follows the other ported pages: the reference's relative
 // document links become app routes — home and "Build my event" → "/", the
@@ -243,6 +244,8 @@ const REVIEWS = [
   },
 ];
 
+const CONFETTI_COLORS = ["#639922", "#97c459", "#e0b341", "#fff"];
+
 // Lit stars, then the remainder greyed out by `.off` — the reference's markup.
 const stars = (n) => (
   <>
@@ -258,6 +261,7 @@ export default function ReviewsView() {
   const statRefs = useRef([]);
   const cardRefs = useRef([]);
   const quoteRef = useRef(null);
+  const canvasRef = useRef(null);
   const firstRects = useRef(null);
   const countedRef = useRef(false);
 
@@ -266,6 +270,9 @@ export default function ReviewsView() {
   const [filter, setFilter] = useState("all");
   const [cur, setCur] = useState(0);
   const [shown, setShown] = useState(0);
+  const [picked, setPicked] = useState(0);
+  const [hover, setHover] = useState(0);
+  const [thanks, setThanks] = useState("");
 
   /* ---------- scroll reveals ---------- */
   useEffect(() => {
@@ -394,7 +401,62 @@ export default function ReviewsView() {
     });
   }, [filter]);
 
+  /* ---------- confetti on a rating ---------- */
+  const burst = useCallback(() => {
+    const cv = canvasRef.current;
+    if (!cv) return;
+    const ctx = cv.getContext("2d");
+    // The reference sizes the bitmap from `cv.parentElement.parentElement` —
+    // the page wrapper, not the `.rv-rate` section the canvas is stretched
+    // over — so the burst is drawn into a document-tall buffer and squashed
+    // into the section. Kept as-is: it is what the reference renders.
+    const box = cv.parentElement?.parentElement?.getBoundingClientRect();
+    if (!box) return;
+    cv.width = box.width;
+    cv.height = box.height;
+    const P = [];
+    for (let i = 0; i < 120; i++) {
+      P.push({
+        x: cv.width / 2,
+        y: cv.height * 0.55,
+        vx: (Math.random() - 0.5) * 12,
+        vy: (Math.random() - 0.5) * 12 - 3,
+        r: 3 + Math.random() * 3,
+        c: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+        a: 1,
+      });
+    }
+    const loop = () => {
+      ctx.clearRect(0, 0, cv.width, cv.height);
+      let alive = false;
+      P.forEach((p) => {
+        p.vy += 0.25;
+        p.x += p.vx;
+        p.y += p.vy;
+        p.a -= 0.01;
+        if (p.a <= 0) return;
+        alive = true;
+        ctx.globalAlpha = Math.max(0, p.a);
+        ctx.fillStyle = p.c;
+        ctx.fillRect(p.x, p.y, p.r, p.r);
+      });
+      ctx.globalAlpha = 1;
+      if (alive) requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
+  }, []);
+
+  const rate = useCallback(
+    (v) => {
+      setPicked(v);
+      setThanks(`Thanks for the ${"★".repeat(v)} — we appreciate you!`);
+      burst();
+    },
+    [burst],
+  );
+
   const spot = SPOTLIGHT[shown];
+  const lit = hover || picked;
   const visible = REVIEWS.filter((r) => filter === "all" || r.cat === filter).length;
 
   return (
@@ -625,6 +687,29 @@ export default function ReviewsView() {
           <div className="rv-empty" style={visible ? undefined : { display: "block" }}>
             No reviews in this category yet.
           </div>
+        </div>
+      </section>
+
+      <section className="rv-rate">
+        <canvas id="rateCf" ref={canvasRef} />
+        <div className="wrap">
+          <h2>How was your event?</h2>
+          <p>Tap a star — we read every one.</p>
+          <div className="stars-in" onMouseLeave={() => setHover(0)}>
+            {[1, 2, 3, 4, 5].map((v) => (
+              <button
+                type="button"
+                key={v}
+                className={v <= lit ? "lit" : undefined}
+                aria-label={`Rate ${v} out of 5`}
+                onMouseEnter={() => setHover(v)}
+                onClick={() => rate(v)}
+              >
+                ★
+              </button>
+            ))}
+          </div>
+          <div className="rate-thanks">{thanks}</div>
         </div>
       </section>
 

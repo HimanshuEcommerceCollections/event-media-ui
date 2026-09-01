@@ -5,7 +5,8 @@
 // reference's vanilla JS is reimplemented below with the same numbers:
 // reveal IntersectionObserver threshold .14, nav "scrolled" at y > 30,
 // the rating bars + count-ups firing once at threshold .3 on the rate card
-// (1300ms, 1-(1-p)³ easing).
+// (1300ms, 1-(1-p)³ easing), and the spotlight carousel at 5500ms
+// with a 180ms quote cross-fade.
 //
 // Link mapping follows the other ported pages: the reference's relative
 // document links become app routes — home and "Build my event" → "/", the
@@ -69,15 +70,66 @@ const STATS = [
   { to: 38, dec: 0, suf: "%", label: "Repeat clients" },
 ];
 
+const SPOTLIGHT = [
+  {
+    img: "spot-1.jpg",
+    q: "One request and our whole backyard wedding came together — tables, lounge, string lights, all set up before we arrived.",
+    st: 5,
+    ini: "PM",
+    name: "Priya & Marcus",
+    tag: "Party rentals · Backyard wedding",
+  },
+  {
+    img: "spot-2.jpg",
+    q: "The DJ read the room perfectly — the dance floor did not empty once all night. Everyone asked who we booked.",
+    st: 5,
+    ini: "AK",
+    name: "Aisha K.",
+    tag: "DJ + music · Corporate gala",
+  },
+  {
+    img: "spot-3.jpg",
+    q: "Buyers walk the space before they ever visit. For our listings, it’s an absolute game changer.",
+    st: 5,
+    ini: "HG",
+    name: "Harbor Group",
+    tag: "Virtual tours · Real estate",
+  },
+];
+
+// The reference prints this row twice so the -50% keyframe loops seamlessly.
+const MARQUEE = [
+  { img: "spot-2.jpg", label: "Neon bash" },
+  { img: "marq-carnival.jpg", label: "Carnival" },
+  { img: "spot-1.jpg", label: "Lakeside wedding" },
+  { img: "marq-album-party.jpg", label: "Album party" },
+  { img: "spot-3.jpg", label: "Brand summit" },
+  { img: "marq-family-fest.jpg", label: "Family fest" },
+  { img: "marq-garden-vows.jpg", label: "Garden vows" },
+  { img: "marq-launch-day.jpg", label: "Launch day" },
+  { img: "marq-film-night.jpg", label: "Film night" },
+];
+
+// Lit stars, then the remainder greyed out by `.off` — the reference's markup.
+const stars = (n) => (
+  <>
+    {"★".repeat(n)}
+    {n < 5 ? <span className="off">{"★".repeat(5 - n)}</span> : null}
+  </>
+);
+
 export default function ReviewsView() {
   const rootRef = useRef(null);
   const navRef = useRef(null);
   const rateCardRef = useRef(null);
   const statRefs = useRef([]);
+  const quoteRef = useRef(null);
   const countedRef = useRef(false);
 
   const [dropOpen, setDropOpen] = useState(false);
   const [barsOn, setBarsOn] = useState(false);
+  const [cur, setCur] = useState(0);
+  const [shown, setShown] = useState(0);
 
   /* ---------- scroll reveals ---------- */
   useEffect(() => {
@@ -154,6 +206,28 @@ export default function ReviewsView() {
     return () => io.disconnect();
   }, [countUp]);
 
+  /* ---------- spotlight carousel ---------- */
+  useEffect(() => {
+    const q = quoteRef.current;
+    if (!q) return undefined;
+    q.style.opacity = "0";
+    const t = setTimeout(() => {
+      setShown(cur);
+      q.style.opacity = "1";
+    }, 180);
+    return () => clearTimeout(t);
+  }, [cur]);
+
+  // Keyed on `cur` so manual navigation restarts the 5.5s dwell, as the
+  // reference's restart() does.
+  useEffect(() => {
+    const t = setInterval(() => setCur((c) => (c + 1) % SPOTLIGHT.length), 5500);
+    return () => clearInterval(t);
+  }, [cur]);
+
+  const go = useCallback((i) => setCur((i + SPOTLIGHT.length) % SPOTLIGHT.length), []);
+
+  const spot = SPOTLIGHT[shown];
 
   return (
     <div ref={rootRef}>
@@ -255,6 +329,83 @@ export default function ReviewsView() {
           </div>
         </div>
       </header>
+
+      <section className="rv-spot">
+        <div className="wrap">
+          <div className="spot-head rise">
+            <p className="eyebrow">In their words</p>
+            <h2>Client spotlight</h2>
+          </div>
+          <div className="spot rise">
+            <div className="spot-media">
+              {SPOTLIGHT.map((s, i) => (
+                <div
+                  className={`sm${i === cur ? " on" : ""}`}
+                  key={s.img}
+                  style={{ backgroundImage: `url('${ASSET(s.img)}')` }}
+                />
+              ))}
+            </div>
+            <div className="spot-body">
+              <div className="spot-mark">“</div>
+              <div className="spot-stars">{stars(spot.st)}</div>
+              <p className="spot-quote" ref={quoteRef}>
+                {spot.q}
+              </p>
+              <div className="spot-who">
+                <div className="spot-av">{spot.ini}</div>
+                <div>
+                  <b>{spot.name}</b>
+                  <span>{spot.tag}</span>
+                </div>
+              </div>
+              <div className="spot-ctrl">
+                <div className="spot-dots">
+                  {SPOTLIGHT.map((s, i) => (
+                    <i
+                      className={i === cur ? "on" : undefined}
+                      key={s.img}
+                      onClick={() => go(i)}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Show quote ${i + 1}`}
+                      onKeyDown={(e) => {
+                        if (e.key !== " " && e.key !== "Enter") return;
+                        e.preventDefault();
+                        go(i);
+                      }}
+                    />
+                  ))}
+                </div>
+                <div className="spot-nav">
+                  <button type="button" onClick={() => go(cur - 1)} aria-label="Previous quote">
+                    ‹
+                  </button>
+                  <button type="button" onClick={() => go(cur + 1)} aria-label="Next quote">
+                    ›
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="rv-marq">
+        <div className="lab">Moments from real Raleigh events</div>
+        <div className="marq-mask">
+          <div className="marq-row">
+            {[0, 1].map((loop) =>
+              MARQUEE.map((m) => (
+                <div className="m" key={`${loop}-${m.label}`}>
+                  <img src={ASSET(m.img)} alt="" />
+                  <span>{m.label}</span>
+                </div>
+              )),
+            )}
+          </div>
+        </div>
+      </section>
 
       <footer className="foot">
         <div className="wrap">

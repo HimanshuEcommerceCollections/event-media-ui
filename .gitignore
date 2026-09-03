@@ -1,7 +1,8 @@
 node_modules/
 .next/
 out/
-build/
+# Anchored: unanchored `build/` also matched the app/build route directory.
+/build/
 .DS_Store
 *.pem
 npm-debug.log*

@@ -6,7 +6,11 @@
  * shop window, so it renders complete content rather than an empty shell.
  *
  * These values are the same ones the API seeds from, so the two agree. Update
- * both together (backend/src/db/seed.ts).
+ * both together (backend/src/db/seed-data/home.ts and services.ts).
+ *
+ * Unlike the other routes' fallbacks, this one is written in the mapped shape
+ * HomeView renders rather than the raw API shape, so it is maintained by hand
+ * instead of by scripts/generate-fallbacks.mjs.
  */
 export const FALLBACK_CONTENT = {
   services: [

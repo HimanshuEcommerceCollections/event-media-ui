@@ -16,7 +16,10 @@
 
 import Script from "next/script";
 import { useCallback, useEffect, useRef, useState } from "react";
+import StepIcon from "../StepIcon";
 import "./entertainers.css";
+import NavAuth from "../../components/NavAuth";
+import SiteFooter from "../../components/SiteFooter";
 
 const Logo = () => (
   <>
@@ -44,123 +47,24 @@ const Caret = () => (
   </svg>
 );
 
-const HERE = "/services/entertainers";
-
-const SERVICE_LINKS = [
-  { href: "/services/party-rentals", label: "Party rentals" },
-  { href: HERE, label: "Entertainers" },
-  { href: "/services/dj-music", label: "DJ + music" },
-  { href: "/services/photo-video", label: "Photo + video" },
-  { href: "/services/virtual-tours", label: "Virtual tours" },
-  { href: "/services/drone-video", label: "Drone video" },
-];
-
-const MENU_LINKS = [
-  { href: "/", idx: "00", label: "Home" },
-  { href: "/services/party-rentals", idx: "01", label: "Party rentals" },
-  { href: HERE, idx: "02", label: "Entertainers" },
-  { href: "/services/dj-music", idx: "03", label: "DJ + music" },
-  { href: "/services/photo-video", idx: "04", label: "Photo + video" },
-  { href: "/services/virtual-tours", idx: "05", label: "Virtual tours" },
-  { href: "/services/drone-video", idx: "06", label: "Drone video" },
-  { href: "/#testimonials", idx: "→", label: "Reviews" },
-];
-
-const MARQUEE = ["Magic", "Face paint", "Caricatures", "Balloons", "Comedy"];
-
-const INTRO_POINTS = [
-  { n: "Vetted performers", p: "Background-checked, reviewed local talent." },
-  { n: "Booked by the hour", p: "1–6 hours, base plus an hourly rate." },
-  { n: "Kids & adults", p: "From birthday face-painting to gala magic." },
-];
-
-// base + hourly, in cents, exactly as the reference's PERF table.
-const PERF = [
-  { name: "Magician", from: "from $350", img: "hero-poster.jpg", b: 35000, h: 9000 },
-  { name: "Face painter", from: "from $180", img: "perf-1.jpg", b: 18000, h: 7000 },
-  { name: "Caricaturist", from: "from $220", img: "perf-2.jpg", b: 22000, h: 8000 },
-  { name: "Balloon artist", from: "from $160", img: "perf-3.jpg", b: 16000, h: 6500 },
-];
-
-const MIN_HOURS = 1;
-const MAX_HOURS = 6;
-
 const money = (c) =>
   `$${(c / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-const CARDS = [
-  { l: "16%", rot: "-26deg", suit: "♠", cls: "dark", p: "Our magician had grown adults gasping like kids.", by: "The Reeves wedding" },
-  { l: "30%", rot: "-15deg", suit: "♥", cls: "red", p: "Sixty happy painted faces in two hours flat.", by: "Maple St birthday" },
-  { l: "43%", rot: "-5deg", suit: "♦", cls: "red", p: "Balloon swords: the undefeated crowd-pleaser.", by: "Backyard bash" },
-  { l: "57%", rot: "5deg", suit: "♣", cls: "dark", p: "The caricatures became everyone's favourite keepsake.", by: "Corporate mixer" },
-  { l: "70%", rot: "15deg", suit: "★", cls: "acc", p: "One form, one show-stopper. That easy.", by: "Downtown gala" },
-  { l: "84%", rot: "26deg", suit: "♠", cls: "dark", p: "Booked, matched and delighted in minutes.", by: "Elm St party" },
-];
-
-const STEPS = [
-  {
-    n: "01",
-    h: "Book",
-    p: "Pick a performer and hours, send one request.",
-    icon: (
-      <>
-        <path d="M9 4h9a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H9z" />
-        <path d="M9 4H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h3" />
-        <path d="M12 8h4M12 12h4" />
-      </>
-    ),
-  },
-  {
-    n: "02",
-    h: "Matched",
-    p: "We pair you with a vetted local act.",
-    icon: (
-      <>
-        <circle cx="8" cy="9" r="3" />
-        <circle cx="16" cy="9" r="3" />
-        <path d="M3 19a5 5 0 0 1 10 0M11 19a5 5 0 0 1 10 0" />
-      </>
-    ),
-  },
-  {
-    n: "03",
-    h: "They arrive",
-    p: "Everything they need, set up and ready.",
-    icon: (
-      <>
-        <rect x="1" y="6" width="13" height="10" rx="1" />
-        <path d="M14 9h4l3 3v4h-7z" />
-        <circle cx="6" cy="18" r="1.8" />
-        <circle cx="17" cy="18" r="1.8" />
-      </>
-    ),
-  },
-  {
-    n: "04",
-    h: "Showtime",
-    p: "The room lights up — you just enjoy it.",
-    icon: <path d="M12 3l2.2 5.3 5.8.5-4.4 3.8 1.3 5.6L12 20.7l-4.2 2 1.3-5.6L4.7 8.3l5.8-.5L12 3Z" />,
-  },
-];
-
-const FAQS = [
-  {
-    q: "Can I book more than one performer?",
-    a: "Absolutely — add several to a single event request and see the combined total.",
-  },
-  {
-    q: "Do performers bring their own supplies?",
-    a: "Yes, all materials and setup are included in the quoted rate.",
-  },
-  {
-    q: "What ages are the acts suitable for?",
-    a: "Each listing notes its best-fit audience; most suit all ages.",
-  },
-];
-
 const SPARKLE_COLORS = ["#97c459", "#EF9F27", "#f4f3ee"];
 
-export default function EntertainersView() {
+export default function EntertainersView({ content }) {
+  // Named locally so the render below reads the way it did when these were
+  // module constants.
+  const { pricing, blocks, navigation } = content;
+  const SERVICE_LINKS = navigation.services;
+  const MENU_LINKS = navigation.menu;
+  const INTRO_POINTS = blocks.intro ?? [];
+  const FAQS = blocks.faq ?? [];
+  const CARDS = blocks.card ?? [];
+  const STEPS = blocks.step ?? [];
+  const MARQUEE = (blocks.marquee ?? []).map((m) => m.label);
+  const { performers: PERF, minHours: MIN_HOURS, maxHours: MAX_HOURS } = pricing;
+
   const rootRef = useRef(null);
   const navRef = useRef(null);
   const lenisRef = useRef(null);
@@ -413,7 +317,7 @@ export default function EntertainersView() {
   const [hours, setHours] = useState(2);
   const totalRef = useRef(null);
 
-  const total = PERF[sel].b + PERF[sel].h * hours;
+  const total = PERF[sel].baseCents + PERF[sel].hourlyCents * hours;
 
   // The reference restarts the bump keyframe by removing the class, forcing a
   // reflow, then re-adding it — a class toggle alone would not replay it.
@@ -487,7 +391,7 @@ export default function EntertainersView() {
               <div className="pn-menu">
                 <span className="pn-menu-caret" aria-hidden="true" />
                 {SERVICE_LINKS.map((l) => (
-                  <a key={l.href} href={l.href} aria-current={l.href === HERE ? "page" : undefined}>
+                  <a key={l.href} href={l.href} aria-current={l.isCurrent ? "page" : undefined}>
                     {l.label}
                   </a>
                 ))}
@@ -499,6 +403,7 @@ export default function EntertainersView() {
             <a className="pn-item" href="/#testimonials">
               Reviews
             </a>
+            <NavAuth />
             <a className="pn-item pn-cta" href="/">
               Build my event
             </a>
@@ -530,9 +435,9 @@ export default function EntertainersView() {
         <nav className="menu-nav" id="menuNav">
           {MENU_LINKS.map((l) => (
             <a
-              key={l.label}
+              key={l.href}
               href={l.href}
-              aria-current={l.href === HERE ? "page" : undefined}
+              aria-current={l.isCurrent ? "page" : undefined}
               onClick={() => setMenu(false)}
             >
               <span className="idx">{l.idx}</span>
@@ -605,9 +510,9 @@ export default function EntertainersView() {
             </p>
             <div className="sp-points stagger">
               {INTRO_POINTS.map((pt) => (
-                <div className="sp-point" key={pt.n}>
-                  <div className="n">{pt.n}</div>
-                  <p>{pt.p}</p>
+                <div className="sp-point" key={pt.name}>
+                  <div className="n">{pt.name}</div>
+                  <p>{pt.text}</p>
                 </div>
               ))}
             </div>
@@ -642,19 +547,19 @@ export default function EntertainersView() {
             {PERF.map((p, i) => (
               <button
                 type="button"
-                key={p.name}
+                key={p.key}
                 className={`perf${sel === i ? " sel" : ""}`}
                 aria-pressed={sel === i}
                 onClick={(e) => pickPerf(i, e)}
               >
                 <div
                   className="pbg"
-                  style={{ backgroundImage: `url('/assets/entertainers/${p.img}')` }}
+                  style={{ backgroundImage: `url('/assets/entertainers/${p.imageFile}')` }}
                 />
                 <div className="pshade" />
                 <div className="pname">
                   <span className="pn">{p.name}</span>
-                  <span className="pfrom">{p.from}</span>
+                  <span className="pfrom">{p.fromLabel}</span>
                 </div>
               </button>
             ))}
@@ -704,9 +609,9 @@ export default function EntertainersView() {
           <div className="card-fan" id="cardFan">
             {CARDS.map((c, i) => (
               <div
-                key={c.by}
+                key={c.author}
                 className={`pcard${flipped.has(i) ? " flip" : ""}`}
-                style={{ "--l": c.l, "--rot": c.rot, zIndex: zIndexes[i] }}
+                style={{ "--l": c.left, "--rot": c.rotate, zIndex: zIndexes[i] }}
                 role="button"
                 aria-pressed={flipped.has(i)}
                 tabIndex={0}
@@ -722,9 +627,9 @@ export default function EntertainersView() {
                     <div className="bk">★</div>
                   </div>
                   <div className="pface pback">
-                    <div className={`suit ${c.cls}`}>{c.suit}</div>
-                    <p>{c.p}</p>
-                    <div className="by">{c.by}</div>
+                    <div className={`suit ${c.tone}`}>{c.suit}</div>
+                    <p>{c.quote}</p>
+                    <div className="by">{c.author}</div>
                   </div>
                 </div>
               </div>
@@ -749,13 +654,15 @@ export default function EntertainersView() {
           </div>
           <div className="tl stagger">
             {STEPS.map((s) => (
-              <div className="step" key={s.n}>
+              <div className="step" key={s.no}>
                 <div className="ti">
-                  <svg viewBox="0 0 24 24">{s.icon}</svg>
+                  <svg viewBox="0 0 24 24">
+                    <StepIcon iconKey={s.iconKey} />
+                  </svg>
                 </div>
-                <div className="n">{s.n}</div>
-                <h4>{s.h}</h4>
-                <p>{s.p}</p>
+                <div className="n">{s.no}</div>
+                <h4>{s.heading}</h4>
+                <p>{s.text}</p>
               </div>
             ))}
           </div>
@@ -767,14 +674,14 @@ export default function EntertainersView() {
           <h2 className="rise">Questions</h2>
           <div className="rise">
             {FAQS.map((f, i) => (
-              <div className={`faq-item${openFaq.has(i) ? " open" : ""}`} key={f.q}>
+              <div className={`faq-item${openFaq.has(i) ? " open" : ""}`} key={f.question}>
                 <button
                   className="faq-q"
                   type="button"
                   aria-expanded={openFaq.has(i)}
                   onClick={() => toggleFaq(i)}
                 >
-                  {f.q}
+                  {f.question}
                   <span className="faq-ic" aria-hidden="true">
                     +
                   </span>
@@ -785,7 +692,7 @@ export default function EntertainersView() {
                     faqRefs.current[i] = el;
                   }}
                 >
-                  <p>{f.a}</p>
+                  <p>{f.answer}</p>
                 </div>
               </div>
             ))}
@@ -813,54 +720,7 @@ export default function EntertainersView() {
         </div>
       </section>
 
-      <footer className="foot">
-        <div className="wrap">
-          <div className="cols">
-            <div>
-              <div className="logo">
-                <Logo />
-              </div>
-              <p className="desc">
-                One request. Whole event covered. A Raleigh marketplace for celebrations and
-                commercial media.
-              </p>
-            </div>
-            <div>
-              <h4>Services</h4>
-              {SERVICE_LINKS.map((l) => (
-                <a className="fl" href={l.href} key={l.href}>
-                  {l.label}
-                </a>
-              ))}
-            </div>
-            <div>
-              <h4>Company</h4>
-              <a className="fl" href="/#about">
-                About
-              </a>
-              <a className="fl" href="/#testimonials">
-                Reviews
-              </a>
-              <a className="fl" href="/">
-                Home
-              </a>
-            </div>
-            <div>
-              <h4>Get started</h4>
-              <a className="fl" href="/">
-                Build my event
-              </a>
-              <a className="fl" href="/#events">
-                Featured events
-              </a>
-            </div>
-          </div>
-          <div className="fine">
-            <span>© 2026 Events &amp; Media · Demo build · noindex</span>
-            <span>Privacy · Terms · Synthetic data only</span>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

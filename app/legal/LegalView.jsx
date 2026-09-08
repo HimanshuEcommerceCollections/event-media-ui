@@ -3,8 +3,8 @@
 // Legal document shell — ported from public/assets/legal-pages/privacy.html
 // and terms.html. Those two references are identical apart from the <title>,
 // the <h1> and the body sections, so both routes render this one component
-// with their own document from ./documents. legal.css is their (byte-identical)
-// <style> block copied verbatim.
+// with the document its route fetched from GET /api/v1/content/legal/<slug>.
+// legal.css is their (byte-identical) <style> block copied verbatim.
 //
 // The reference's vanilla JS is reimplemented below with the same numbers:
 // nav "scrolled" at y > 30, and the table-of-contents scroll-spy at
@@ -17,11 +17,16 @@
 // Link mapping follows the other ported pages: the reference's relative
 // document links become app routes — home and "Build my event" → "/", the
 // services menu → "/services/*", Events/About/Contact → the matching landing
-// page anchors. "Commercial" is dropped from the footer because this app has
-// no such route or anchor to point it at.
+// page anchors.
+//
+// The reference's own footer is not ported: every route renders the shared
+// app/components/SiteFooter.
 
 import { useEffect, useRef, useState } from "react";
+import LegalBody from "./LegalBody";
 import "./legal.css";
+import NavAuth from "../components/NavAuth";
+import SiteFooter from "../components/SiteFooter";
 
 const Logo = () => (
   <>
@@ -49,16 +54,12 @@ const Caret = () => (
   </svg>
 );
 
-const SERVICE_LINKS = [
-  { href: "/services/party-rentals", label: "Party rentals" },
-  { href: "/services/entertainers", label: "Entertainers" },
-  { href: "/services/dj-music", label: "DJ + music" },
-  { href: "/services/photo-video", label: "Photo + video" },
-  { href: "/services/virtual-tours", label: "Virtual tours" },
-  { href: "/services/drone-video", label: "Drone video" },
-];
+// The header dropdown's link list arrives with the document, so a new service
+// does not have to be added here as well.
 
 export default function LegalView({ doc }) {
+  const SERVICE_LINKS = doc.navigation.services;
+
   const navRef = useRef(null);
   const bodyRef = useRef(null);
   const [dropOpen, setDropOpen] = useState(false);
@@ -141,9 +142,7 @@ export default function LegalView({ doc }) {
             <a className="pn-item" href="/reviews">
               Reviews
             </a>
-            <a className="pn-item" href="/signin">
-              Sign in
-            </a>
+            <NavAuth />
             <a className="pn-item pn-cta" href="/">
               Build my event
             </a>
@@ -153,9 +152,9 @@ export default function LegalView({ doc }) {
 
       <header className="l-head">
         <div className="wrap">
-          <p className="eyebrow">Legal</p>
+          <p className="eyebrow">{doc.kicker}</p>
           <h1>{doc.title}</h1>
-          <p>{doc.updated}</p>
+          <p>{doc.updatedLabel}</p>
         </div>
       </header>
 
@@ -181,7 +180,7 @@ export default function LegalView({ doc }) {
               {doc.sections.map((s) => (
                 <section id={s.id} key={s.id}>
                   <h2>{s.title}</h2>
-                  {s.body}
+                  <LegalBody blocks={s.blocks} />
                 </section>
               ))}
             </div>
@@ -189,63 +188,7 @@ export default function LegalView({ doc }) {
         </div>
       </main>
 
-      <footer className="foot">
-        <div className="wrap">
-          <div className="cols">
-            <div>
-              <div className="logo">
-                <Logo />
-              </div>
-              <p className="desc">
-                One request. Whole event covered. A Raleigh marketplace for celebrations and
-                commercial media.
-              </p>
-            </div>
-            <div>
-              <h4>Services</h4>
-              {SERVICE_LINKS.map((l) => (
-                <a className="fl" href={l.href} key={l.href}>
-                  {l.label}
-                </a>
-              ))}
-            </div>
-            <div>
-              <h4>Company</h4>
-              <a className="fl" href="/#about">
-                About
-              </a>
-              <a className="fl" href="/#events">
-                Events
-              </a>
-              <a className="fl" href="/reviews">
-                Reviews
-              </a>
-              <a className="fl" href="/#contact">
-                Contact
-              </a>
-            </div>
-            <div>
-              <h4>Get started</h4>
-              <a className="fl" href="/">
-                Build my event
-              </a>
-              <a className="fl" href="/signin">
-                Sign in
-              </a>
-              <a className="fl" href="/legal/privacy">
-                Privacy
-              </a>
-              <a className="fl" href="/legal/terms">
-                Terms
-              </a>
-            </div>
-          </div>
-          <div className="fine">
-            <span>© 2026 Events &amp; Media · Demo build · noindex</span>
-            <span>Synthetic data only</span>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

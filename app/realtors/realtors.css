@@ -40,6 +40,9 @@ a{color:inherit;text-decoration:none}img{display:block;max-width:100%}
 .btn{display:inline-flex;align-items:center;gap:8px;font-weight:600;font-size:15px;padding:.85em 1.6em;border-radius:999px;border:1.5px solid transparent;cursor:pointer;transition:transform .14s var(--ease),background .2s}
 .btn-primary{background:var(--accent);color:var(--ink-900)}.btn-primary:hover{transform:translateY(-2px);background:var(--accent-2)}
 .btn-ghost{background:transparent;color:#fff;border-color:rgba(255,255,255,.4)}.btn-ghost:hover{border-color:#fff}
+/* Dead style, kept as-is with the rest of the reference: the footer this
+   route used to render is now the shared app/components/SiteFooter, which
+   carries its own namespaced CSS, so nothing matches `.foot` any more. */
 .foot{background:var(--dark-2);color:var(--ond2);padding:56px 0 36px;border-top:1px solid var(--bdd)}
 .foot .cols{display:grid;grid-template-columns:1.6fr repeat(3,1fr);gap:34px}
 .foot .logo{color:var(--ond);margin-bottom:14px}.foot p.desc{font-size:.9rem;max-width:32ch}

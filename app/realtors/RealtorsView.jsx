@@ -16,6 +16,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import "./realtors.css";
+import NavAuth from "../components/NavAuth";
+import SiteFooter from "../components/SiteFooter";
 
 const Logo = () => (
   <>
@@ -272,9 +274,7 @@ export default function RealtorsView() {
             <a className="pn-item" href="/reviews">
               Reviews
             </a>
-            <a className="pn-item" href="/signin">
-              Sign in
-            </a>
+            <NavAuth />
             <a className="pn-item pn-cta" href="/build">
               Build my event
             </a>
@@ -436,77 +436,7 @@ export default function RealtorsView() {
         </div>
       </section>
 
-      <footer className="foot">
-        <div className="wrap">
-          <div className="cols">
-            <div>
-              <div className="logo">
-                <Logo />
-              </div>
-              <p className="desc">
-                One request. Whole event covered. A Raleigh marketplace for celebrations and
-                commercial media.
-              </p>
-            </div>
-            <div>
-              <h4>Services</h4>
-              {SERVICE_LINKS.map((l) => (
-                <a className="fl" href={l.href} key={l.href}>
-                  {l.label}
-                </a>
-              ))}
-            </div>
-            <div>
-              <h4>Company</h4>
-              <a className="fl" href="/about">
-                About
-              </a>
-              <a className="fl" href="/how-it-works">
-                How it works
-              </a>
-              <a className="fl" href="/realtors">
-                For realtors
-              </a>
-              <a className="fl" href="/#events">
-                Events
-              </a>
-              <a className="fl" href="/reviews">
-                Reviews
-              </a>
-            </div>
-            <div>
-              <h4>Get started</h4>
-              <a className="fl" href="/build">
-                Build my event
-              </a>
-              <a className="fl" href="/vendors">
-                Become a vendor
-              </a>
-              <a className="fl" href="/faq">
-                FAQ
-              </a>
-              <a className="fl" href="/contact">
-                Contact
-              </a>
-              <a className="fl" href="/signin">
-                Sign in
-              </a>
-            </div>
-          </div>
-          <div className="fine">
-            <span>© 2026 Events &amp; Media · Demo build · noindex</span>
-            <span>
-              <a href="/legal/privacy" style={{ color: "var(--ond2)" }}>
-                Privacy
-              </a>{" "}
-              ·{" "}
-              <a href="/legal/terms" style={{ color: "var(--ond2)" }}>
-                Terms
-              </a>
-            </span>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

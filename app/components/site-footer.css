@@ -1,0 +1,127 @@
+/* Shared site footer — the four-column footer from the landing page
+   (app/home.css `.foot`), lifted into a component so every route renders the
+   same block.
+
+   Every selector is namespaced under `.site-foot` and the design tokens are
+   re-declared locally rather than inherited from the page stylesheet. Each
+   route owns its own CSS (see app/layout.jsx) and several of them carry their
+   own `.foot`, `.logo`, `.cols` and `.fine` rules copied from the reference
+   documents — some of which centre the footer or shrink it to a single mono
+   line. Keeping this block self-contained means none of those leak in, and the
+   footer renders identically on every route including /signin, whose
+   stylesheet has no `.wrap`. */
+
+.site-foot {
+  --sf-dark-2: #050504;
+  --sf-ond: #f4f3ee;
+  --sf-ond2: #b9b8b0;
+  --sf-accent-2: #97c459;
+  --sf-bdd: #26261f;
+  --sf-fdisp: "Space Grotesk", system-ui, sans-serif;
+  --sf-fsans: "Inter", system-ui, sans-serif;
+  --sf-fmono: "Space Mono", monospace;
+  --sf-ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+  background: var(--sf-dark-2);
+  color: var(--sf-ond2);
+  font-family: var(--sf-fsans);
+  line-height: 1.6;
+  padding: 70px 0 44px;
+  border-top: 1px solid var(--sf-bdd);
+}
+
+.site-foot .sf-wrap {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 32px;
+}
+
+.site-foot .sf-cols {
+  display: grid;
+  grid-template-columns: 1.6fr repeat(3, 1fr);
+  gap: 36px;
+}
+
+.site-foot .sf-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--sf-ond);
+  margin-bottom: 16px;
+}
+.site-foot .sf-logo .sf-rings {
+  display: flex;
+}
+.site-foot .sf-logo .sf-rings i {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 3px solid var(--sf-ond);
+}
+.site-foot .sf-logo .sf-rings i:first-child {
+  border-color: var(--sf-accent-2);
+  margin-right: -6px;
+}
+.site-foot .sf-logo b {
+  font-family: var(--sf-fdisp);
+  font-size: 19px;
+  font-weight: 600;
+}
+
+.site-foot .sf-desc {
+  margin: 0;
+  font-size: 0.9rem;
+  max-width: 32ch;
+}
+
+.site-foot h4 {
+  font-family: var(--sf-fmono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--sf-accent-2);
+  margin: 0 0 14px;
+}
+
+.site-foot a.sf-link {
+  display: block;
+  width: fit-content;
+  font-size: 0.9rem;
+  color: var(--sf-ond2);
+  text-decoration: none;
+  padding: 6px 0;
+  transition: color 0.18s, transform 0.25s var(--sf-ease);
+}
+.site-foot a.sf-link:hover {
+  color: var(--sf-ond);
+  transform: translateX(4px);
+}
+
+.site-foot .sf-fine {
+  margin-top: 36px;
+  padding-top: 20px;
+  border-top: 1px solid var(--sf-bdd);
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-family: var(--sf-fmono);
+  font-size: 12px;
+}
+.site-foot .sf-fine a {
+  color: var(--sf-ond2);
+  text-decoration: none;
+  transition: color 0.18s;
+}
+.site-foot .sf-fine a:hover {
+  color: var(--sf-ond);
+}
+
+@media (max-width: 960px) {
+  .site-foot .sf-cols {
+    grid-template-columns: 1fr 1fr;
+  }
+}

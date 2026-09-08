@@ -17,6 +17,7 @@ import {
 } from "../../lib/api";
 import { saveSession } from "../../lib/session";
 import "./signin.css";
+import SiteFooter from "../components/SiteFooter";
 
 // Maps a server-side validation field name onto the id of the field block that
 // should turn red. The backend reports details: [{ field, message }].
@@ -832,6 +833,7 @@ export default function SignInView() {
           </div>
         </div>
       </div>
+      <SiteFooter />
       <canvas
         id="authCf"
         ref={cfRef}

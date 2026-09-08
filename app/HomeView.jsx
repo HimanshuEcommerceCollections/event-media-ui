@@ -17,29 +17,8 @@
 import Script from "next/script";
 import { useCallback, useEffect, useRef, useState } from "react";
 import "./home.css";
-
-// Footer columns. The reference ships these as dead `href="#"` labels; the
-// routes they name all exist, so each label carries the route it points at —
-// the same shape the other views' footers use.
-const FOOT_SERVICES = [
-  { href: "/services/party-rentals", label: "Party rentals" },
-  { href: "/services/entertainers", label: "Entertainers" },
-  { href: "/services/dj-music", label: "DJ + music" },
-  { href: "/services/photo-video", label: "Photo + video" },
-];
-
-const FOOT_COMMERCIAL = [
-  { href: "/services/virtual-tours", label: "Virtual tours" },
-  { href: "/services/drone-video", label: "Drone video" },
-  { href: "/realtors", label: "For realtors" },
-];
-
-const FOOT_COMPANY = [
-  { href: "/how-it-works", label: "How it works" },
-  { href: "/vendors", label: "Become a vendor" },
-  { href: "/about", label: "About" },
-  { href: "/faq", label: "FAQ" },
-];
+import NavAuth from "./components/NavAuth";
+import SiteFooter from "./components/SiteFooter";
 
 // Icons keyed the way the API reports them (services.iconKey), so the catalogue
 // can drive which frame shows which glyph. Paths are verbatim from the reference.
@@ -501,6 +480,7 @@ export default function HomeView({ content }) {
             <a className="pn-item" href="#testimonials">
               Reviews
             </a>
+            <NavAuth />
             <a className="pn-item pn-cta" href="#">
               Build my event
             </a>
@@ -833,57 +813,7 @@ export default function HomeView({ content }) {
         </div>
       </section>
 
-      <footer className="foot" id="contact">
-        <div className="wrap">
-          <div className="cols">
-            <div>
-              <div className="logo">
-                <Logo />
-              </div>
-              <p className="desc">
-                One request. Whole event covered. A Raleigh marketplace for celebrations and commercial media.
-              </p>
-            </div>
-            <div>
-              <h4>Services</h4>
-              {FOOT_SERVICES.map((l) => (
-                <a className="fl" href={l.href} data-cursor="link" key={l.href}>
-                  {l.label}
-                </a>
-              ))}
-            </div>
-            <div>
-              <h4>Commercial</h4>
-              {FOOT_COMMERCIAL.map((l) => (
-                <a className="fl" href={l.href} data-cursor="link" key={l.href}>
-                  {l.label}
-                </a>
-              ))}
-            </div>
-            <div>
-              <h4>Company</h4>
-              {FOOT_COMPANY.map((l) => (
-                <a className="fl" href={l.href} data-cursor="link" key={l.href}>
-                  {l.label}
-                </a>
-              ))}
-            </div>
-          </div>
-          <div className="fine">
-            <span>© 2026 Events &amp; Media · Demo build · noindex</span>
-            <span>
-              <a href="/legal/privacy" style={{ color: "var(--ond2)" }} data-cursor="link">
-                Privacy
-              </a>{" "}
-              ·{" "}
-              <a href="/legal/terms" style={{ color: "var(--ond2)" }} data-cursor="link">
-                Terms
-              </a>{" "}
-              · Synthetic data only
-            </span>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter id="contact" />
 
       <div className={`menu-overlay${menuOpen ? " open" : ""}`} id="menuOverlay" aria-hidden={!menuOpen}>
         <p className="menu-eyebrow">Now showing — Events &amp; Media</p>

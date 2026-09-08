@@ -254,6 +254,9 @@ em{font-style:normal}
 .mon-dots i{width:9px;height:9px;border-radius:50%;background:var(--bds);cursor:pointer;transition:.25s var(--ease)}
 .mon-dots i.on{background:var(--accent);width:24px;border-radius:5px}
 @media(max-width:900px){.about-grid{grid-template-columns:1fr;gap:36px}.mon-screen{padding:44px 26px}}
+/* Dead style, kept as-is with the rest of the reference: the footer this
+   route used to render is now the shared app/components/SiteFooter, which
+   carries its own namespaced CSS, so nothing matches `.foot` any more. */
 .foot{background:var(--dark-2);color:var(--ond2);padding:70px 0 44px;border-top:1px solid var(--bdd)}
 .foot .cols{display:grid;grid-template-columns:1.6fr repeat(3,1fr);gap:36px}
 .foot .logo{color:var(--ond);margin-bottom:16px}.foot p.desc{font-size:.9rem;max-width:32ch}

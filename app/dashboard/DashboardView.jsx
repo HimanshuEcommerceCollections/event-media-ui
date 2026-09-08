@@ -6,22 +6,33 @@
 // reveal IntersectionObserver threshold .14, nav "scrolled" at y > 30, the
 // one-second countdown to the next event, and the request tabs.
 //
-// The account, requests and saved pros are the reference's synthetic data,
-// authored here. The backend already exposes GET /api/v1/auth/me,
-// /api/v1/requests/mine and /api/v1/perks/me, so this page is the natural
-// place to read them — but that turns it into an authenticated route with a
-// redirect and a loading state, which is a larger change than porting the
-// design. Kept static until that is asked for.
+// The requests and saved pros are the reference's synthetic data, authored
+// here. The backend already exposes GET /api/v1/requests/mine and
+// /api/v1/perks/me, so this page is the natural place to read them — but that
+// turns it into an authenticated route with a redirect and a loading state,
+// which is a larger change than porting the design. Kept static until asked.
+//
+// The header's name and initials are the exception: the navbar avatar next to
+// them shows the real signed-in user, so leaving the reference's "Maya" there
+// would put two different people on one screen. They come from the stored
+// session — no fetch, no redirect — and fall back to the reference's synthetic
+// account when nobody is signed in, which is what a demo visitor still sees.
 //
 // The countdown target is the reference's fixed date. Once it passes, the
 // clamp holds every readout at zero rather than counting up.
 //
 // Link mapping follows the other ported pages: home and "Build my event" →
 // "/", the services menu → "/services/*", Events/About → the matching
-// landing page anchors, Reviews → "/reviews", Sign out → "/signin".
+// landing page anchors, Reviews → "/reviews". The header's "Sign out" is no
+// longer the reference's plain link to /signin — it revokes the session and
+// sends the browser home, the same action the navbar avatar menu performs.
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { signOut } from "../../lib/auth";
+import { loadSession } from "../../lib/session";
 import "./dashboard.css";
+import NavAuth from "../components/NavAuth";
+import SiteFooter from "../components/SiteFooter";
 
 const Logo = () => (
   <>
@@ -190,9 +201,39 @@ export default function DashboardView() {
 
   const [dropOpen, setDropOpen] = useState(false);
   const [filter, setFilter] = useState("all");
+  const [leaving, setLeaving] = useState(false);
+  // Server-rendered as the synthetic account, then swapped for the real one on
+  // mount — localStorage is not readable while rendering on the server.
+  const [account, setAccount] = useState(ACCOUNT);
   // Server-rendered as zeros, exactly like the reference's markup, so the
   // first paint cannot disagree with what the clock reads on hydration.
   const [left, setLeft] = useState(ZERO);
+
+  useEffect(() => {
+    const user = loadSession()?.user;
+    if (!user) return;
+    // First name only: the reference's heading is "Welcome back, Maya", and a
+    // full name pushes that line into the countdown card on narrow screens.
+    const first = String(user.fullName ?? "").trim().split(/\s+/)[0];
+    setAccount((a) => ({
+      ...a,
+      // The full initials, matching the navbar avatar rather than the
+      // reference’s single letter, so the two discs on screen agree.
+      initial: user.initials || (first || user.email || "?").charAt(0).toUpperCase(),
+      name: first || user.email,
+    }));
+  }, []);
+
+  const handleSignOut = useCallback(
+    async (e) => {
+      e.preventDefault();
+      if (leaving) return;
+      setLeaving(true);
+      await signOut();
+      window.location.assign("/");
+    },
+    [leaving],
+  );
 
   /* ---------- scroll reveals ---------- */
   useEffect(() => {
@@ -289,9 +330,7 @@ export default function DashboardView() {
             <a className="pn-item" href="/reviews">
               Reviews
             </a>
-            <a className="pn-item" href="/signin">
-              Sign in
-            </a>
+            <NavAuth />
             <a className="pn-item pn-cta" href="/">
               Build my event
             </a>
@@ -302,13 +341,16 @@ export default function DashboardView() {
       <header className="d-hero">
         <div className="wrap">
           <div className="d-top">
-            <div className="d-av">{ACCOUNT.initial}</div>
+            <div className="d-av">{account.initial}</div>
             <div>
-              <h1>Welcome back, {ACCOUNT.name}</h1>
-              <div className="sub">{ACCOUNT.sub}</div>
+              <h1>Welcome back, {account.name}</h1>
+              <div className="sub">{account.sub}</div>
             </div>
             <div className="d-out">
-              Signed in · <a href="/signin">Sign out</a>
+              Signed in ·{" "}
+              <a href="/signin" onClick={handleSignOut} aria-disabled={leaving}>
+                {leaving ? "Signing out…" : "Sign out"}
+              </a>
             </div>
           </div>
         </div>
@@ -418,66 +460,7 @@ export default function DashboardView() {
         </div>
       </main>
 
-      <footer className="foot">
-        <div className="wrap">
-          <div className="cols">
-            <div>
-              <div className="logo">
-                <Logo />
-              </div>
-              <p className="desc">
-                One request. Whole event covered. A Raleigh marketplace for celebrations and
-                commercial media.
-              </p>
-            </div>
-            <div>
-              <h4>Services</h4>
-              {SERVICE_LINKS.map((l) => (
-                <a className="fl" href={l.href} key={l.href}>
-                  {l.label}
-                </a>
-              ))}
-            </div>
-            <div>
-              <h4>Company</h4>
-              <a className="fl" href="/#about">
-                About
-              </a>
-              <a className="fl" href="/#events">
-                Events
-              </a>
-              <a className="fl" href="/reviews">
-                Reviews
-              </a>
-              <a className="fl" href="/commercial">
-                Commercial
-              </a>
-              <a className="fl" href="/contact">
-                Contact
-              </a>
-            </div>
-            <div>
-              <h4>Get started</h4>
-              <a className="fl" href="/">
-                Build my event
-              </a>
-              <a className="fl" href="/signin">
-                Sign in
-              </a>
-              <a className="fl" href="/legal/privacy">
-                Privacy
-              </a>
-              <a className="fl" href="/legal/terms">
-                Terms
-              </a>
-            </div>
-          </div>
-          <div className="fine">
-            <span>© 2026 Events &amp; Media · Demo build · noindex</span>
-            <span>Synthetic data only</span>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

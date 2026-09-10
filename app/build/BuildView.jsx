@@ -24,6 +24,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import "./build.css";
+import NavAuth from "../components/NavAuth";
+import SiteFooter from "../components/SiteFooter";
 
 const Logo = () => (
   <>
@@ -511,6 +513,7 @@ export default function BuildView() {
             <a className="pn-item" href="/reviews">
               Reviews
             </a>
+            <NavAuth />
             <a className="pn-item pn-cta" href="/build">
               Build my event
             </a>
@@ -869,9 +872,7 @@ export default function BuildView() {
       </div>
       <canvas id="okCf" aria-hidden="true" ref={canvasRef} />
 
-      <footer className="foot">
-        <div className="wrap">© 2026 Events &amp; Media · Demo build · Synthetic data only</div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

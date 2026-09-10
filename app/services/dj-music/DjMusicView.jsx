@@ -15,10 +15,17 @@
 //    scripts, which bail on the missing canvas. Their CSS stays in
 //    dj-music.css, unused, exactly as in the reference.
 //  - the parallax loop over [data-parallax]: this page has no such element.
+//
+// The nav links, intro points, hourly rate, hour bounds, add-ons and FAQs
+// arrive from GET /api/v1/content/services/dj-music, so a rate change is a
+// seed edit rather than a code edit. The beat lab's tracks and presets stay
+// here: they drive a toy sequencer, not anything a customer is quoted on.
 
 import Script from "next/script";
 import { useCallback, useEffect, useRef, useState } from "react";
 import "./dj-music.css";
+import NavAuth from "../../components/NavAuth";
+import SiteFooter from "../../components/SiteFooter";
 
 const Logo = () => (
   <>
@@ -45,62 +52,6 @@ const Caret = () => (
     <path d="M6 9l6 6 6-6" />
   </svg>
 );
-
-const HERE = "/services/dj-music";
-
-const SERVICE_LINKS = [
-  { href: "/services/party-rentals", label: "Party rentals" },
-  { href: "/services/entertainers", label: "Entertainers" },
-  { href: HERE, label: "DJ + music" },
-  { href: "/services/photo-video", label: "Photo + video" },
-  { href: "/services/virtual-tours", label: "Virtual tours" },
-  { href: "/services/drone-video", label: "Drone video" },
-];
-
-const MENU_LINKS = [
-  { href: "/", idx: "00", label: "Home" },
-  { href: "/services/party-rentals", idx: "01", label: "Party rentals" },
-  { href: "/services/entertainers", idx: "02", label: "Entertainers" },
-  { href: HERE, idx: "03", label: "DJ + music" },
-  { href: "/services/photo-video", idx: "04", label: "Photo + video" },
-  { href: "/services/virtual-tours", idx: "05", label: "Virtual tours" },
-  { href: "/services/drone-video", idx: "06", label: "Drone video" },
-  { href: "/#testimonials", idx: "→", label: "Reviews" },
-];
-
-const INTRO_POINTS = [
-  { n: "Pro local DJs", p: "Reviewed, reliable, genre-flexible." },
-  { n: "By the hour", p: "2–8 hour sets to match your timeline." },
-  { n: "Full add-ons", p: "Uplighting, fog, MC and photo booth." },
-];
-
-const FAQS = [
-  {
-    q: "Can the DJ MC the event too?",
-    a: "Yes — add MC services and your DJ handles announcements and the run of show.",
-  },
-  {
-    q: "Do you provide the sound system?",
-    a: "A full PA suited to your headcount and venue is included.",
-  },
-  {
-    q: "Can we send a playlist?",
-    a: "Of course — share must-plays and do-not-plays in your request notes.",
-  },
-];
-
-/* ---------------- pricing calculator (cents, like the reference) ------------- */
-
-const HOURLY = 12500;
-const MIN_HOURS = 2;
-const MAX_HOURS = 8;
-
-const ADDONS = [
-  { id: "uplighting", name: "Uplighting", cents: 9500, label: "+$95" },
-  { id: "fog", name: "Fog machine", cents: 4500, label: "+$45" },
-  { id: "mc", name: "MC services", cents: 11000, label: "+$110" },
-  { id: "booth", name: "Photo booth", cents: 25000, label: "+$250" },
-];
 
 const money = (c) =>
   `$${(c / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -225,7 +176,16 @@ function trig(a, name, t) {
   s.stop(t + dur + 0.05);
 }
 
-export default function DjMusicView() {
+export default function DjMusicView({ content }) {
+  // Named locally so the render below reads the way it did when these were
+  // module constants.
+  const { pricing, blocks, navigation } = content;
+  const SERVICE_LINKS = navigation.services;
+  const MENU_LINKS = navigation.menu;
+  const INTRO_POINTS = blocks.intro ?? [];
+  const FAQS = blocks.faq ?? [];
+  const { hourlyCents: HOURLY, minHours: MIN_HOURS, maxHours: MAX_HOURS, addons: ADDONS } = pricing;
+
   const rootRef = useRef(null);
   const navRef = useRef(null);
   const lenisRef = useRef(null);
@@ -351,7 +311,7 @@ export default function DjMusicView() {
   const [picked, setPicked] = useState(() => new Set());
 
   const total =
-    HOURLY * hours + ADDONS.reduce((sum, a) => (picked.has(a.id) ? sum + a.cents : sum), 0);
+    HOURLY * hours + ADDONS.reduce((sum, a) => (picked.has(a.key) ? sum + a.cents : sum), 0);
 
   const toggleAddon = (id) =>
     setPicked((prev) => {
@@ -530,7 +490,7 @@ export default function DjMusicView() {
               <div className="pn-menu">
                 <span className="pn-menu-caret" aria-hidden="true" />
                 {SERVICE_LINKS.map((l) => (
-                  <a key={l.href} href={l.href} aria-current={l.href === HERE ? "page" : undefined}>
+                  <a key={l.href} href={l.href} aria-current={l.isCurrent ? "page" : undefined}>
                     {l.label}
                   </a>
                 ))}
@@ -542,6 +502,7 @@ export default function DjMusicView() {
             <a className="pn-item" href="/#testimonials">
               Reviews
             </a>
+            <NavAuth />
             <a className="pn-item pn-cta" href="/">
               Build my event
             </a>
@@ -573,9 +534,9 @@ export default function DjMusicView() {
         <nav className="menu-nav" id="menuNav">
           {MENU_LINKS.map((l) => (
             <a
-              key={l.label}
+              key={l.href}
               href={l.href}
-              aria-current={l.href === HERE ? "page" : undefined}
+              aria-current={l.isCurrent ? "page" : undefined}
               onClick={() => setMenu(false)}
             >
               <span className="idx">{l.idx}</span>
@@ -633,9 +594,9 @@ export default function DjMusicView() {
             </p>
             <div className="sp-points stagger">
               {INTRO_POINTS.map((pt) => (
-                <div className="sp-point" key={pt.n}>
-                  <div className="n">{pt.n}</div>
-                  <p>{pt.p}</p>
+                <div className="sp-point" key={pt.name}>
+                  <div className="n">{pt.name}</div>
+                  <p>{pt.text}</p>
                 </div>
               ))}
             </div>
@@ -682,19 +643,19 @@ export default function DjMusicView() {
             </div>
             <div className="addons">
               {ADDONS.map((a) => {
-                const on = picked.has(a.id);
+                const on = picked.has(a.key);
                 return (
                   <div
-                    key={a.id}
+                    key={a.key}
                     className={`addon${on ? " on" : ""}`}
                     role="checkbox"
                     aria-checked={on}
                     tabIndex={0}
-                    onClick={() => toggleAddon(a.id)}
+                    onClick={() => toggleAddon(a.key)}
                     onKeyDown={(e) => {
                       if (e.key !== " " && e.key !== "Enter") return;
                       e.preventDefault();
-                      toggleAddon(a.id);
+                      toggleAddon(a.key);
                     }}
                   >
                     <span className="nm">{a.name}</span>
@@ -798,14 +759,14 @@ export default function DjMusicView() {
           <h2 className="rise">Questions</h2>
           <div className="rise">
             {FAQS.map((f, i) => (
-              <div className={`faq-item${openFaq.has(i) ? " open" : ""}`} key={f.q}>
+              <div className={`faq-item${openFaq.has(i) ? " open" : ""}`} key={f.question}>
                 <button
                   className="faq-q"
                   type="button"
                   aria-expanded={openFaq.has(i)}
                   onClick={() => toggleFaq(i)}
                 >
-                  {f.q}
+                  {f.question}
                   <span className="faq-ic" aria-hidden="true">
                     +
                   </span>
@@ -816,7 +777,7 @@ export default function DjMusicView() {
                     faqRefs.current[i] = el;
                   }}
                 >
-                  <p>{f.a}</p>
+                  <p>{f.answer}</p>
                 </div>
               </div>
             ))}
@@ -845,54 +806,7 @@ export default function DjMusicView() {
         </div>
       </section>
 
-      <footer className="foot">
-        <div className="wrap">
-          <div className="cols">
-            <div>
-              <div className="logo">
-                <Logo />
-              </div>
-              <p className="desc">
-                One request. Whole event covered. A Raleigh marketplace for celebrations and
-                commercial media.
-              </p>
-            </div>
-            <div>
-              <h4>Services</h4>
-              {SERVICE_LINKS.map((l) => (
-                <a className="fl" href={l.href} key={l.href}>
-                  {l.label}
-                </a>
-              ))}
-            </div>
-            <div>
-              <h4>Company</h4>
-              <a className="fl" href="/#about">
-                About
-              </a>
-              <a className="fl" href="/#testimonials">
-                Reviews
-              </a>
-              <a className="fl" href="/">
-                Home
-              </a>
-            </div>
-            <div>
-              <h4>Get started</h4>
-              <a className="fl" href="/">
-                Build my event
-              </a>
-              <a className="fl" href="/#events">
-                Featured events
-              </a>
-            </div>
-          </div>
-          <div className="fine">
-            <span>© 2026 Events &amp; Media · Demo build · noindex</span>
-            <span>Privacy · Terms · Synthetic data only</span>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

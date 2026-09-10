@@ -17,9 +17,9 @@
 // Only the photograph cross-fades on a year change; the year, heading and copy
 // swap immediately, at the 180ms mark. That asymmetry is the reference's.
 //
-// Note this page's chrome differs from its siblings: the nav carries no "Sign
-// in" item and the footer is a single line rather than the four-column block.
-// Both are as authored.
+// Note this page's nav differs from its siblings: it carries no "Sign in"
+// item. That is as authored. The reference's single-line footer is gone — the
+// shared app/components/SiteFooter is rendered on every route instead.
 //
 // Link mapping follows the other ported pages: home → "/", the services menu
 // → "/services/*", Events → the landing page anchor, "Build my event" →
@@ -27,6 +27,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import "./about.css";
+import NavAuth from "../components/NavAuth";
+import SiteFooter from "../components/SiteFooter";
 
 const Logo = () => (
   <>
@@ -366,6 +368,7 @@ export default function AboutView() {
             <a className="pn-item" href="/reviews">
               Reviews
             </a>
+            <NavAuth />
             <a className="pn-item pn-cta" href="/build">
               Build my event
             </a>
@@ -535,9 +538,7 @@ export default function AboutView() {
         </div>
       </section>
 
-      <footer className="foot">
-        <div className="wrap">© 2026 Events &amp; Media · Demo build · Synthetic data only</div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

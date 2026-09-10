@@ -20,10 +20,18 @@
 // The kit cards print their totals as literal strings in the reference. Here
 // they are summed from the same quantities and unit prices, which reproduces
 // those strings exactly and keeps them true if a price ever moves.
+//
+// The catalogue itself — nav links, intro points, item prices, kit presets,
+// polaroids, steps and FAQs — arrives from GET
+// /api/v1/content/services/party-rentals, so a price change is a seed edit
+// rather than a code edit. Only the behaviour stays here.
 
 import Script from "next/script";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import StepIcon from "../StepIcon";
 import "./party-rentals.css";
+import NavAuth from "../../components/NavAuth";
+import SiteFooter from "../../components/SiteFooter";
 
 const Logo = () => (
   <>
@@ -51,175 +59,32 @@ const Caret = () => (
   </svg>
 );
 
-const HERE = "/services/party-rentals";
-
-const SERVICE_LINKS = [
-  { href: HERE, label: "Party rentals" },
-  { href: "/services/entertainers", label: "Entertainers" },
-  { href: "/services/dj-music", label: "DJ + music" },
-  { href: "/services/photo-video", label: "Photo + video" },
-  { href: "/services/virtual-tours", label: "Virtual tours" },
-  { href: "/services/drone-video", label: "Drone video" },
-];
-
-const MENU_LINKS = [
-  { href: "/", idx: "00", label: "Home" },
-  { href: HERE, idx: "01", label: "Party rentals" },
-  { href: "/services/entertainers", idx: "02", label: "Entertainers" },
-  { href: "/services/dj-music", idx: "03", label: "DJ + music" },
-  { href: "/services/photo-video", idx: "04", label: "Photo + video" },
-  { href: "/services/virtual-tours", idx: "05", label: "Virtual tours" },
-  { href: "/services/drone-video", idx: "06", label: "Drone video" },
-  { href: "/reviews", idx: "→", label: "Reviews" },
-];
-
-const INTRO_POINTS = [
-  { n: "Delivered & set up", p: "We handle drop-off, staging and collection." },
-  { n: "Partner-fulfilled", p: "Vetted local inventory, not warehoused by us." },
-  { n: "Priced per item", p: "See the per-piece cost before you commit." },
-];
-
-// cents, exactly as the reference's PR table; `step` is its data-step.
-const ITEMS = [
-  { key: "chair", label: "Folding chair", note: "$1.75 each · steps of 10", price: 175, step: 10 },
-  { key: "table", label: "Round table", note: "$9.50 each", price: 950, step: 1 },
-  { key: "linen", label: "Table linen", note: "$6.25 each", price: 625, step: 1 },
-  { key: "tent", label: "20×20 tent", note: "$325.00 each", price: 32500, step: 1 },
-  { key: "dancefloor", label: "Dance floor", note: "$210.00 each", price: 21000, step: 1 },
-  { key: "lighting", label: "String-light kit", note: "$145.00 each", price: 14500, step: 1 },
-];
-
-const START_QTY = { chair: 40, table: 5, linen: 5, tent: 0, dancefloor: 0, lighting: 0 };
-
-const KITS = [
-  {
-    key: "backyard",
-    name: "Backyard Party",
-    img: "kit-backyard-party.jpg",
-    includes: ["30 folding chairs", "4 round tables", "4 table linens", "String-light kit"],
-    qty: { chair: 30, table: 4, linen: 4, tent: 0, dancefloor: 0, lighting: 1 },
-  },
-  {
-    key: "wedding",
-    name: "The Wedding",
-    img: "kit-wedding.jpg",
-    includes: [
-      "120 folding chairs",
-      "15 round tables",
-      "15 table linens",
-      "20×20 tent",
-      "Dance floor",
-      "2 string-light kits",
-    ],
-    qty: { chair: 120, table: 15, linen: 15, tent: 1, dancefloor: 1, lighting: 2 },
-  },
-  {
-    key: "birthday",
-    name: "Kids' Birthday",
-    img: "kit-kids-birthday.jpg",
-    includes: ["20 folding chairs", "3 round tables", "3 table linens", "String-light kit"],
-    qty: { chair: 20, table: 3, linen: 3, tent: 0, dancefloor: 0, lighting: 1 },
-  },
-  {
-    key: "corporate",
-    name: "Corporate",
-    img: "kit-corporate.jpg",
-    includes: [
-      "60 folding chairs",
-      "8 round tables",
-      "8 table linens",
-      "Dance floor",
-      "2 string-light kits",
-    ],
-    qty: { chair: 60, table: 8, linen: 8, tent: 0, dancefloor: 1, lighting: 2 },
-  },
-];
-
-const POLAROIDS = [
-  { img: "ba-styled.jpg", label: "Setup", left: "2%", top: "6%", rot: "-6deg" },
-  { img: "polaroid-moment.jpg", label: "The moment", left: "23%", top: "30%", rot: "4deg" },
-  { img: "polaroid-head-table.jpg", label: "Head table", left: "45%", top: "3%", rot: "-3deg" },
-  { img: "polaroid-little-guests.jpg", label: "Little guests", left: "60%", top: "34%", rot: "7deg" },
-  { img: "polaroid-first-dance.jpg", label: "First dance", left: "78%", top: "12%", rot: "-5deg" },
-];
-
-const STEPS = [
-  {
-    n: "01",
-    h: "Deliver",
-    p: "We drop everything at your venue, on schedule.",
-    icon: (
-      <>
-        <rect x="1" y="6" width="13" height="10" rx="1" />
-        <path d="M14 9h4l3 3v4h-7z" />
-        <circle cx="6" cy="18" r="1.8" />
-        <circle cx="17" cy="18" r="1.8" />
-      </>
-    ),
-  },
-  {
-    n: "02",
-    h: "Set up",
-    p: "Our partners stage chairs, tables and decor.",
-    icon: (
-      <>
-        <circle cx="12" cy="12" r="3.4" />
-        <path d="M12 3v3M12 18v3M3 12h3M18 12h3M6 6l2 2M18 6l-2 2M6 18l2-2M18 18l-2-2" />
-      </>
-    ),
-  },
-  {
-    n: "03",
-    h: "Celebrate",
-    p: "You enjoy the day — nothing to haul or fuss.",
-    icon: (
-      <>
-        <path d="M4 20 9 8l7 7-12 5Z" />
-        <path d="M14 4l1 2M18 6l-1.5 1.5M20 10l-2 .8" />
-      </>
-    ),
-  },
-  {
-    n: "04",
-    h: "Collect",
-    p: "We pack it all down and take it away after.",
-    icon: (
-      <>
-        <path d="M4 8 12 4l8 4v8l-8 4-8-4V8Z" />
-        <path d="M4 8l8 4 8-4M12 12v8" />
-      </>
-    ),
-  },
-];
-
-const FAQS = [
-  {
-    q: "Do you deliver and set up?",
-    a: "Yes — delivery, setup and pickup are coordinated with the fulfilling partner and included in your request.",
-  },
-  {
-    q: "Is there a minimum order?",
-    a: "Most partners have a small minimum; the builder will flag it before you submit.",
-  },
-  {
-    q: "How far ahead should I book?",
-    a: "Two to three weeks is ideal for peak-season weekends.",
-  },
-];
-
 const CONFETTI_COLORS = ["#97c459", "#639922", "#EF9F27", "#e24b4a", "#3D5AC9", "#D4537E", "#f4f3ee"];
-
-// The chair strip stops drawing at 80 and prints the remainder as a count.
-const CHAIRVIZ_MAX = 80;
 
 const money = (c) =>
   `$${(c / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-const priceOf = (qty) => ITEMS.reduce((sum, it) => sum + (qty[it.key] || 0) * it.price, 0);
+/** Sums a quantity map against the item list the API supplied. */
+const priceOf = (items, qty) =>
+  items.reduce((sum, it) => sum + (qty[it.key] || 0) * it.unitCents, 0);
 
 const ASSET = (name) => `/assets/party-rentals/${name}`;
 
-export default function PartyRentalsView() {
+export default function PartyRentalsView({ content }) {
+  // Named locally so the render below reads the way it did when these were
+  // module constants.
+  const { pricing, blocks, navigation } = content;
+  const SERVICE_LINKS = navigation.services;
+  const MENU_LINKS = navigation.menu;
+  const INTRO_POINTS = blocks.intro ?? [];
+  const ITEMS = pricing.items;
+  const KITS = blocks.kit ?? [];
+  const POLAROIDS = blocks.polaroid ?? [];
+  const STEPS = blocks.step ?? [];
+  const FAQS = blocks.faq ?? [];
+  // The chair strip stops drawing past this and prints the remainder.
+  const CHAIRVIZ_MAX = pricing.chairVizMax;
+
   const rootRef = useRef(null);
   const navRef = useRef(null);
   const lenisRef = useRef(null);
@@ -234,7 +99,7 @@ export default function PartyRentalsView() {
   const [reduce, setReduce] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [dropOpen, setDropOpen] = useState(false);
-  const [qty, setQty] = useState(START_QTY);
+  const [qty, setQty] = useState(pricing.startQuantities);
   const [kit, setKit] = useState(null);
   const [openFaq, setOpenFaq] = useState(() => new Set());
 
@@ -459,7 +324,7 @@ export default function PartyRentalsView() {
   };
 
   /* ---------- rental calculator ---------- */
-  const total = useMemo(() => priceOf(qty), [qty]);
+  const total = useMemo(() => priceOf(ITEMS, qty), [ITEMS, qty]);
 
   const setItem = (key, value) =>
     setQty((prev) => ({ ...prev, [key]: Math.max(0, value) }));
@@ -476,7 +341,7 @@ export default function PartyRentalsView() {
 
   const loadKit = (k) => {
     setKit(k.key);
-    setQty({ ...k.qty });
+    setQty({ ...k.quantities });
     calcRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
@@ -565,7 +430,7 @@ export default function PartyRentalsView() {
               <div className="pn-menu">
                 <span className="pn-menu-caret" aria-hidden="true" />
                 {SERVICE_LINKS.map((l) => (
-                  <a key={l.href} href={l.href} aria-current={l.href === HERE ? "page" : undefined}>
+                  <a key={l.href} href={l.href} aria-current={l.isCurrent ? "page" : undefined}>
                     {l.label}
                   </a>
                 ))}
@@ -577,6 +442,7 @@ export default function PartyRentalsView() {
             <a className="pn-item" href="/reviews">
               Reviews
             </a>
+            <NavAuth />
             <a className="pn-item pn-cta" href="/">
               Build my event
             </a>
@@ -608,9 +474,9 @@ export default function PartyRentalsView() {
         <nav className="menu-nav" id="menuNav">
           {MENU_LINKS.map((l) => (
             <a
-              key={l.label}
+              key={l.href}
               href={l.href}
-              aria-current={l.href === HERE ? "page" : undefined}
+              aria-current={l.isCurrent ? "page" : undefined}
               onClick={() => setMenu(false)}
             >
               <span className="idx">{l.idx}</span>
@@ -674,9 +540,9 @@ export default function PartyRentalsView() {
             </p>
             <div className="sp-points stagger">
               {INTRO_POINTS.map((pt) => (
-                <div className="sp-point" key={pt.n}>
-                  <div className="n">{pt.n}</div>
-                  <p>{pt.p}</p>
+                <div className="sp-point" key={pt.name}>
+                  <div className="n">{pt.name}</div>
+                  <p>{pt.text}</p>
                 </div>
               ))}
             </div>
@@ -739,7 +605,7 @@ export default function PartyRentalsView() {
               >
                 <div className="kit-inner">
                   <div className="kit-face kit-front">
-                    <div className="kbg" style={{ backgroundImage: `url('${ASSET(k.img)}')` }} />
+                    <div className="kbg" style={{ backgroundImage: `url('${ASSET(k.imageFile)}')` }} />
                     <span className="flip-hint">hover ↻</span>
                     <h4>{k.name}</h4>
                   </div>
@@ -753,7 +619,7 @@ export default function PartyRentalsView() {
                       </ul>
                     </div>
                     <div className="kb-foot">
-                      <span className="kb-total">{money(priceOf(k.qty))}</span>
+                      <span className="kb-total">{money(priceOf(ITEMS, k.quantities))}</span>
                       <span className="kb-go">Load →</span>
                     </div>
                   </div>
@@ -844,10 +710,10 @@ export default function PartyRentalsView() {
             {POLAROIDS.map((p) => (
               <div
                 className="pola"
-                key={p.img}
-                style={{ left: p.left, top: p.top, transform: `rotate(${p.rot})` }}
+                key={p.imageFile}
+                style={{ left: p.left, top: p.top, transform: `rotate(${p.rotate})` }}
               >
-                <img src={ASSET(p.img)} alt="" />
+                <img src={ASSET(p.imageFile)} alt="" />
                 <span>{p.label}</span>
               </div>
             ))}
@@ -865,13 +731,15 @@ export default function PartyRentalsView() {
           </div>
           <div className="tl stagger">
             {STEPS.map((s) => (
-              <div className="step" key={s.n}>
+              <div className="step" key={s.no}>
                 <div className="ti">
-                  <svg viewBox="0 0 24 24">{s.icon}</svg>
+                  <svg viewBox="0 0 24 24">
+                    <StepIcon iconKey={s.iconKey} />
+                  </svg>
                 </div>
-                <div className="n">{s.n}</div>
-                <h4>{s.h}</h4>
-                <p>{s.p}</p>
+                <div className="n">{s.no}</div>
+                <h4>{s.heading}</h4>
+                <p>{s.text}</p>
               </div>
             ))}
           </div>
@@ -883,14 +751,14 @@ export default function PartyRentalsView() {
           <h2 className="rise">Questions</h2>
           <div className="rise">
             {FAQS.map((f, i) => (
-              <div className={`faq-item${openFaq.has(i) ? " open" : ""}`} key={f.q}>
+              <div className={`faq-item${openFaq.has(i) ? " open" : ""}`} key={f.question}>
                 <button
                   className="faq-q"
                   type="button"
                   aria-expanded={openFaq.has(i)}
                   onClick={() => toggleFaq(i)}
                 >
-                  {f.q}
+                  {f.question}
                   <span className="faq-ic" aria-hidden="true">
                     +
                   </span>
@@ -901,7 +769,7 @@ export default function PartyRentalsView() {
                     faqRefs.current[i] = el;
                   }}
                 >
-                  <p>{f.a}</p>
+                  <p>{f.answer}</p>
                 </div>
               </div>
             ))}
@@ -930,54 +798,7 @@ export default function PartyRentalsView() {
         </div>
       </section>
 
-      <footer className="foot">
-        <div className="wrap">
-          <div className="cols">
-            <div>
-              <div className="logo">
-                <Logo />
-              </div>
-              <p className="desc">
-                One request. Whole event covered. A Raleigh marketplace for celebrations and
-                commercial media.
-              </p>
-            </div>
-            <div>
-              <h4>Services</h4>
-              {SERVICE_LINKS.map((l) => (
-                <a className="fl" href={l.href} key={l.href}>
-                  {l.label}
-                </a>
-              ))}
-            </div>
-            <div>
-              <h4>Company</h4>
-              <a className="fl" href="/#about">
-                About
-              </a>
-              <a className="fl" href="/reviews">
-                Reviews
-              </a>
-              <a className="fl" href="/">
-                Home
-              </a>
-            </div>
-            <div>
-              <h4>Get started</h4>
-              <a className="fl" href="/">
-                Build my event
-              </a>
-              <a className="fl" href="/#events">
-                Featured events
-              </a>
-            </div>
-          </div>
-          <div className="fine">
-            <span>© 2026 Events &amp; Media · Demo build · noindex</span>
-            <span>Privacy · Terms · Synthetic data only</span>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

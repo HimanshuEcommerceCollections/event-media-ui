@@ -15,7 +15,11 @@
 // anchors.
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { sendRatingPulse } from "../../lib/api";
+import { loadSession } from "../../lib/session";
 import "./reviews.css";
+import NavAuth from "../components/NavAuth";
+import SiteFooter from "../components/SiteFooter";
 
 const Logo = () => (
   <>
@@ -45,204 +49,11 @@ const Caret = () => (
 
 const ASSET = (name) => `/assets/reviews/${name}`;
 
-const SERVICE_LINKS = [
-  { href: "/services/party-rentals", label: "Party rentals" },
-  { href: "/services/entertainers", label: "Entertainers" },
-  { href: "/services/dj-music", label: "DJ + music" },
-  { href: "/services/photo-video", label: "Photo + video" },
-  { href: "/services/virtual-tours", label: "Virtual tours" },
-  { href: "/services/drone-video", label: "Drone video" },
-];
-
-// 5★ down to 1★, as the reference's data-w attributes.
-const BARS = [
-  { lab: "5★", w: 92 },
-  { lab: "4★", w: 6 },
-  { lab: "3★", w: 1 },
-  { lab: "2★", w: 1 },
-  { lab: "1★", w: 0 },
-];
-
-// data-to / data-dec / data-suf from the reference's .cu elements.
-const STATS = [
-  { to: 320, dec: 0, suf: "", label: "Events covered" },
-  { to: 4.9, dec: 1, suf: "", label: "Average rating" },
-  { to: 96, dec: 0, suf: "%", label: "Five-star" },
-  { to: 38, dec: 0, suf: "%", label: "Repeat clients" },
-];
-
-const SPOTLIGHT = [
-  {
-    img: "spot-1.jpg",
-    q: "One request and our whole backyard wedding came together — tables, lounge, string lights, all set up before we arrived.",
-    st: 5,
-    ini: "PM",
-    name: "Priya & Marcus",
-    tag: "Party rentals · Backyard wedding",
-  },
-  {
-    img: "spot-2.jpg",
-    q: "The DJ read the room perfectly — the dance floor did not empty once all night. Everyone asked who we booked.",
-    st: 5,
-    ini: "AK",
-    name: "Aisha K.",
-    tag: "DJ + music · Corporate gala",
-  },
-  {
-    img: "spot-3.jpg",
-    q: "Buyers walk the space before they ever visit. For our listings, it’s an absolute game changer.",
-    st: 5,
-    ini: "HG",
-    name: "Harbor Group",
-    tag: "Virtual tours · Real estate",
-  },
-];
-
-// The reference prints this row twice so the -50% keyframe loops seamlessly.
-const MARQUEE = [
-  { img: "spot-2.jpg", label: "Neon bash" },
-  { img: "marq-carnival.jpg", label: "Carnival" },
-  { img: "spot-1.jpg", label: "Lakeside wedding" },
-  { img: "marq-album-party.jpg", label: "Album party" },
-  { img: "spot-3.jpg", label: "Brand summit" },
-  { img: "marq-family-fest.jpg", label: "Family fest" },
-  { img: "marq-garden-vows.jpg", label: "Garden vows" },
-  { img: "marq-launch-day.jpg", label: "Launch day" },
-  { img: "marq-film-night.jpg", label: "Film night" },
-];
-
-const FILTERS = [
-  { f: "all", label: "All" },
-  { f: "party", label: "Party rentals" },
-  { f: "ent", label: "Entertainers" },
-  { f: "dj", label: "DJ + music" },
-  { f: "photo", label: "Photo + video" },
-  { f: "tours", label: "Virtual tours" },
-  { f: "drone", label: "Drone video" },
-];
-
-const REVIEWS = [
-  {
-    cat: "party",
-    av: "#639922",
-    ini: "PM",
-    name: "Priya & Marcus",
-    tag: "Party rentals",
-    st: 5,
-    txt: "One request and our whole backyard wedding came together — tables, lounge, string lights, all set up before we arrived. Effortless.",
-    when: "June · verified",
-  },
-  {
-    cat: "dj",
-    av: "#e0b341",
-    ini: "AK",
-    name: "Aisha K.",
-    tag: "DJ + music",
-    st: 5,
-    txt: "The DJ read the room perfectly — the dance floor did not empty once all night!",
-    when: "April · verified",
-  },
-  {
-    cat: "ent",
-    av: "#6fb0d6",
-    ini: "TD",
-    name: "The Delgado Family",
-    tag: "Entertainers",
-    st: 5,
-    txt: "The magician had our kids (and honestly the adults) completely speechless.",
-    when: "May · verified",
-  },
-  {
-    cat: "tours",
-    av: "#e79ab5",
-    ini: "NR",
-    name: "Northside Realty",
-    tag: "Virtual tours",
-    st: 5,
-    txt: "Our listings sell faster with the 3D tours, and the volume pricing is a real win.",
-    when: "ongoing · verified",
-  },
-  {
-    cat: "photo",
-    av: "#e8934b",
-    ini: "TR",
-    name: "Tom & Riley",
-    tag: "Photo + video",
-    st: 5,
-    txt: "Edited gallery back in three days, and the drone shots were unreal.",
-    when: "March · verified",
-  },
-  {
-    cat: "drone",
-    av: "#8a7bd8",
-    ini: "CC",
-    name: "Cardinal Coworking",
-    tag: "Drone video",
-    st: 4,
-    txt: "Aerials made our launch video pop. Booking was smooth and the pilot was a pro.",
-    when: "Feb · verified",
-  },
-  {
-    cat: "party",
-    av: "#3b9a8f",
-    ini: "BM",
-    name: "Bianca M.",
-    tag: "Party rentals",
-    st: 5,
-    txt: "Chairs, tables, lighting — delivered and set up before I even got there. Spotless!",
-    when: "July · verified",
-  },
-  {
-    cat: "ent",
-    av: "#d96a5b",
-    ini: "GH",
-    name: "Grace H.",
-    tag: "Entertainers",
-    st: 5,
-    txt: "A face painter and balloon artist kept thirty kids happy for hours. Lifesavers.",
-    when: "June · verified",
-  },
-  {
-    cat: "dj",
-    av: "#639922",
-    ini: "EH",
-    name: "Elm Street HOA",
-    tag: "DJ + music",
-    st: 5,
-    txt: "Booked, matched and done in minutes. The whole neighborhood loved it.",
-    when: "May · verified",
-  },
-  {
-    cat: "photo",
-    av: "#e0b341",
-    ini: "DS",
-    name: "Devon & Sam",
-    tag: "Photo + video",
-    st: 5,
-    txt: "Every candid moment captured beautifully. Worth every single penny.",
-    when: "October · verified",
-  },
-  {
-    cat: "tours",
-    av: "#6fb0d6",
-    ini: "HG",
-    name: "Harbor Group",
-    tag: "Virtual tours",
-    st: 5,
-    txt: "Buyers walk the space before they ever visit. An absolute game changer.",
-    when: "ongoing · verified",
-  },
-  {
-    cat: "drone",
-    av: "#e79ab5",
-    ini: "LP",
-    name: "Lena P.",
-    tag: "Drone video",
-    st: 5,
-    txt: "The sunset flyover of our venue gave every guest chills. Stunning.",
-    when: "September · verified",
-  },
-];
+// SERVICE_LINKS, the rating histogram, the stats, the spotlight slides, the
+// photo marquee, the filter chips and the review wall all used to be authored
+// here. They now arrive from GET /api/v1/content/reviews, so a new service or
+// a new review needs no edit to this file. What stays local is the animation:
+// the confetti system, the 5.5s carousel dwell and the FLIP filter transition.
 
 const CONFETTI_COLORS = ["#639922", "#97c459", "#e0b341", "#fff"];
 
@@ -254,7 +65,21 @@ const stars = (n) => (
   </>
 );
 
-export default function ReviewsView() {
+export default function ReviewsView({ content }) {
+  // Named locally so the render below reads the way it did when these were
+  // module constants.
+  const {
+    summary,
+    stats: STATS,
+    filters: FILTERS,
+    spotlight: SPOTLIGHT,
+    reviews: REVIEWS,
+    marquee: MARQUEE,
+    navigation,
+  } = content;
+  const SERVICE_LINKS = navigation.services;
+  const BARS = summary.histogram;
+
   const rootRef = useRef(null);
   const navRef = useRef(null);
   const rateCardRef = useRef(null);
@@ -323,13 +148,13 @@ export default function ReviewsView() {
       STATS.forEach((s, i) => {
         const el = statRefs.current[i];
         if (!el) return;
-        const v = s.to * e;
-        el.textContent = (s.dec ? v.toFixed(s.dec) : Math.round(v)) + s.suf;
+        const v = s.value * e;
+        el.textContent = s.prefix + (s.decimals ? v.toFixed(s.decimals) : Math.round(v)) + s.suffix;
       });
       if (p < 1) requestAnimationFrame(step);
     };
     requestAnimationFrame(step);
-  }, []);
+  }, [STATS]);
 
   useEffect(() => {
     const card = rateCardRef.current;
@@ -451,13 +276,19 @@ export default function ReviewsView() {
       setPicked(v);
       setThanks(`Thanks for the ${"★".repeat(v)} — we appreciate you!`);
       burst();
+      // Recorded server-side so the taps are actually counted. The thank-you
+      // and the confetti are not held back on the round trip, and a failure is
+      // not surfaced: the visitor has already given their answer, and there is
+      // nothing useful for them to do about it.
+      const session = loadSession();
+      sendRatingPulse(v, session?.accessToken).catch(() => {});
     },
     [burst],
   );
 
   const spot = SPOTLIGHT[shown];
   const lit = hover || picked;
-  const visible = REVIEWS.filter((r) => filter === "all" || r.cat === filter).length;
+  const visible = REVIEWS.filter((r) => filter === "all" || r.categoryKey === filter).length;
 
   return (
     <div ref={rootRef}>
@@ -502,6 +333,7 @@ export default function ReviewsView() {
             <a className="pn-item active" href="/reviews">
               Reviews
             </a>
+            <NavAuth />
             <a className="pn-item pn-cta" href="/">
               Build my event
             </a>
@@ -525,18 +357,23 @@ export default function ReviewsView() {
             </p>
             <div className="rate-card rise" ref={rateCardRef}>
               <div className="rc-score">
-                <b>4.9</b>
+                <b>{summary.average.toFixed(1)}</b>
                 <div className="rc-stars">★★★★★</div>
-                <span>320 verified events</span>
+                <span>
+                  {summary.total} verified {summary.total === 1 ? "review" : "reviews"}
+                </span>
               </div>
               <div className="rc-bars">
                 {BARS.map((b) => (
-                  <div className="rc-row" key={b.lab}>
-                    <span className="lab">{b.lab}</span>
+                  <div className="rc-row" key={b.stars}>
+                    <span className="lab">{b.stars}★</span>
                     <div className="rc-track">
-                      <div className="rc-fill" style={barsOn ? { width: `${b.w}%` } : undefined} />
+                      <div
+                        className="rc-fill"
+                        style={barsOn ? { width: `${b.percent}%` } : undefined}
+                      />
                     </div>
-                    <span className="pct">{b.w}%</span>
+                    <span className="pct">{b.percent}%</span>
                   </div>
                 ))}
               </div>
@@ -571,21 +408,21 @@ export default function ReviewsView() {
               {SPOTLIGHT.map((s, i) => (
                 <div
                   className={`sm${i === cur ? " on" : ""}`}
-                  key={s.img}
-                  style={{ backgroundImage: `url('${ASSET(s.img)}')` }}
+                  key={s.id}
+                  style={{ backgroundImage: `url('${s.image.path}')` }}
                 />
               ))}
             </div>
             <div className="spot-body">
               <div className="spot-mark">“</div>
-              <div className="spot-stars">{stars(spot.st)}</div>
+              <div className="spot-stars">{stars(spot.stars)}</div>
               <p className="spot-quote" ref={quoteRef}>
-                {spot.q}
+                {spot.quote}
               </p>
               <div className="spot-who">
-                <div className="spot-av">{spot.ini}</div>
+                <div className="spot-av">{spot.initials}</div>
                 <div>
-                  <b>{spot.name}</b>
+                  <b>{spot.authorName}</b>
                   <span>{spot.tag}</span>
                 </div>
               </div>
@@ -594,7 +431,7 @@ export default function ReviewsView() {
                   {SPOTLIGHT.map((s, i) => (
                     <i
                       className={i === cur ? "on" : undefined}
-                      key={s.img}
+                      key={s.id}
                       onClick={() => go(i)}
                       role="button"
                       tabIndex={0}
@@ -627,8 +464,8 @@ export default function ReviewsView() {
           <div className="marq-row">
             {[0, 1].map((loop) =>
               MARQUEE.map((m) => (
-                <div className="m" key={`${loop}-${m.label}`}>
-                  <img src={ASSET(m.img)} alt="" />
+                <div className="m" key={`${loop}-${m.id}`}>
+                  <img src={m.image.path} alt="" />
                   <span>{m.label}</span>
                 </div>
               )),
@@ -647,9 +484,9 @@ export default function ReviewsView() {
             {FILTERS.map((f) => (
               <button
                 type="button"
-                key={f.f}
-                className={filter === f.f ? "on" : ""}
-                onClick={() => applyFilter(f.f)}
+                key={f.key}
+                className={filter === f.key ? "on" : ""}
+                onClick={() => applyFilter(f.key)}
               >
                 {f.label}
               </button>
@@ -662,24 +499,26 @@ export default function ReviewsView() {
                 // order, and keeps that order when filtering (hidden cards
                 // stay in the DOM), so parity is the index, not the position.
                 className={`rv-card bub${i % 2 ? " sent" : ""}`}
-                key={`${r.name}-${r.tag}`}
-                data-cat={r.cat}
-                style={filter === "all" || r.cat === filter ? undefined : { display: "none" }}
+                key={r.id}
+                data-cat={r.categoryKey}
+                style={
+                  filter === "all" || r.categoryKey === filter ? undefined : { display: "none" }
+                }
                 ref={(el) => {
                   cardRefs.current[i] = el;
                 }}
               >
-                <div className="bub-av" style={{ background: r.av }}>
-                  {r.ini}
+                <div className="bub-av" style={{ background: r.avatarColor }}>
+                  {r.initials}
                 </div>
                 <div className="bub-msg">
                   <div className="bub-name">
-                    {r.name} <i className="chk">✓</i>
-                    <span className="bub-tag">{r.tag}</span>
+                    {r.authorName} <i className="chk">✓</i>
+                    <span className="bub-tag">{r.serviceLabel}</span>
                   </div>
-                  <div className="bub-stars">{stars(r.st)}</div>
-                  <p className="bub-txt">{r.txt}</p>
-                  <div className="bub-time">{r.when}</div>
+                  <div className="bub-stars">{stars(r.stars)}</div>
+                  <p className="bub-txt">{r.body}</p>
+                  <div className="bub-time">{r.whenLabel}</div>
                 </div>
               </article>
             ))}
@@ -713,54 +552,7 @@ export default function ReviewsView() {
         </div>
       </section>
 
-      <footer className="foot">
-        <div className="wrap">
-          <div className="cols">
-            <div>
-              <div className="logo">
-                <Logo />
-              </div>
-              <p className="desc">
-                One request. Whole event covered. A Raleigh marketplace for celebrations and
-                commercial media.
-              </p>
-            </div>
-            <div>
-              <h4>Services</h4>
-              {SERVICE_LINKS.map((l) => (
-                <a className="fl" href={l.href} key={l.href}>
-                  {l.label}
-                </a>
-              ))}
-            </div>
-            <div>
-              <h4>Company</h4>
-              <a className="fl" href="/#about">
-                About
-              </a>
-              <a className="fl" href="/#events">
-                Events
-              </a>
-              <a className="fl" href="/reviews">
-                Reviews
-              </a>
-            </div>
-            <div>
-              <h4>Get started</h4>
-              <a className="fl" href="/">
-                Build my event
-              </a>
-              <a className="fl" href="/">
-                Home
-              </a>
-            </div>
-          </div>
-          <div className="fine">
-            <span>© 2026 Events &amp; Media · Demo build · noindex</span>
-            <span>Privacy · Terms · Synthetic data only</span>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

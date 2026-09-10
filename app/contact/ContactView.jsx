@@ -19,6 +19,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import "./contact.css";
+import NavAuth from "../components/NavAuth";
+import SiteFooter from "../components/SiteFooter";
 
 const Logo = () => (
   <>
@@ -221,9 +223,7 @@ export default function ContactView() {
             <a className="pn-item" href="/reviews">
               Reviews
             </a>
-            <a className="pn-item" href="/signin">
-              Sign in
-            </a>
+            <NavAuth />
             <a className="pn-item pn-cta" href="/">
               Build my event
             </a>
@@ -347,66 +347,7 @@ export default function ContactView() {
         </div>
       </main>
 
-      <footer className="foot">
-        <div className="wrap">
-          <div className="cols">
-            <div>
-              <div className="logo">
-                <Logo />
-              </div>
-              <p className="desc">
-                One request. Whole event covered. A Raleigh marketplace for celebrations and
-                commercial media.
-              </p>
-            </div>
-            <div>
-              <h4>Services</h4>
-              {SERVICE_LINKS.map((l) => (
-                <a className="fl" href={l.href} key={l.href}>
-                  {l.label}
-                </a>
-              ))}
-            </div>
-            <div>
-              <h4>Company</h4>
-              <a className="fl" href="/#about">
-                About
-              </a>
-              <a className="fl" href="/#events">
-                Events
-              </a>
-              <a className="fl" href="/reviews">
-                Reviews
-              </a>
-              <a className="fl" href="/commercial">
-                Commercial
-              </a>
-              <a className="fl" href="/contact">
-                Contact
-              </a>
-            </div>
-            <div>
-              <h4>Get started</h4>
-              <a className="fl" href="/">
-                Build my event
-              </a>
-              <a className="fl" href="/signin">
-                Sign in
-              </a>
-              <a className="fl" href="/legal/privacy">
-                Privacy
-              </a>
-              <a className="fl" href="/legal/terms">
-                Terms
-              </a>
-            </div>
-          </div>
-          <div className="fine">
-            <span>© 2026 Events &amp; Media · Demo build · noindex</span>
-            <span>Synthetic data only</span>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

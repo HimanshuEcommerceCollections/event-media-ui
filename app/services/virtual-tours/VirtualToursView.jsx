@@ -18,6 +18,8 @@
 import Script from "next/script";
 import { useCallback, useEffect, useRef, useState } from "react";
 import "./virtual-tours.css";
+import NavAuth from "../../components/NavAuth";
+import SiteFooter from "../../components/SiteFooter";
 
 const Logo = () => (
   <>
@@ -45,78 +47,22 @@ const Caret = () => (
   </svg>
 );
 
-const HERE = "/services/virtual-tours";
-
-const SERVICE_LINKS = [
-  { href: "/services/party-rentals", label: "Party rentals" },
-  { href: "/services/entertainers", label: "Entertainers" },
-  { href: "/services/dj-music", label: "DJ + music" },
-  { href: "/services/photo-video", label: "Photo + video" },
-  { href: HERE, label: "Virtual tours" },
-  { href: "/services/drone-video", label: "Drone video" },
-];
-
-const MENU_LINKS = [
-  { href: "/", idx: "00", label: "Home" },
-  { href: "/services/party-rentals", idx: "01", label: "Party rentals" },
-  { href: "/services/entertainers", idx: "02", label: "Entertainers" },
-  { href: "/services/dj-music", idx: "03", label: "DJ + music" },
-  { href: "/services/photo-video", idx: "04", label: "Photo + video" },
-  { href: HERE, idx: "05", label: "Virtual tours" },
-  { href: "/services/drone-video", idx: "06", label: "Drone video" },
-  { href: "/#testimonials", idx: "→", label: "Reviews" },
-];
-
-const INTRO_POINTS = [
-  { n: "For realtors", p: "Volume-friendly for repeat listings." },
-  { n: "Priced by sq ft", p: "Straightforward tiers, no guesswork." },
-  { n: "Fast delivery", p: "Hosted tour link back the next day." },
-];
-
-const FAQS = [
-  {
-    q: "How is the tour delivered?",
-    a: "As a hosted link you can embed on your listing and MLS.",
-  },
-  {
-    q: "Do you offer volume rates?",
-    a: "Yes — recurring-shoot volume routes to a coordinator for a custom rate.",
-  },
-  {
-    q: "How large a property can you scan?",
-    a: "Any size; tiers scale to 5,000+ sq ft with custom pricing above.",
-  },
-];
-
-// cents, exactly as the reference's #pvPacks data-price buttons.
-const PACKS = [
-  { name: "Under 1,500 sq ft", price: 19900 },
-  { name: "1,500–3,000", price: 29900 },
-  { name: "3,000–5,000", price: 44900 },
-  { name: "5,000+ sq ft", price: 64900 },
-];
-
-// cents, exactly as the reference's #pvAdd data-add buttons.
-const ADDONS = [
-  { name: "2D floor plan", price: 7900 },
-  { name: "Aerial exterior", price: 14900 },
-  { name: "Dollhouse 3D view", price: 9900 },
-  { name: "12-mo hosting", price: 6000 },
-];
-
-const INCLUDED = [
-  "Hosted, shareable tour link",
-  "Unlimited walk-through views",
-  "Mobile & VR ready",
-  "Delivered next business day",
-];
-
 const money = (c) =>
   `$${(c / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 const ASSET = (name) => `/assets/virtual-tours/${name}`;
 
-export default function VirtualToursView() {
+export default function VirtualToursView({ content }) {
+  // Named locally so the render below reads the way it did when these were
+  // module constants.
+  const { pricing, blocks, navigation } = content;
+  const SERVICE_LINKS = navigation.services;
+  const MENU_LINKS = navigation.menu;
+  const INTRO_POINTS = blocks.intro ?? [];
+  const FAQS = blocks.faq ?? [];
+  const INCLUDED = (blocks.included ?? []).map((i) => i.text);
+  const { packs: PACKS, addons: ADDONS } = pricing;
+
   const rootRef = useRef(null);
   const navRef = useRef(null);
   const lenisRef = useRef(null);
@@ -221,7 +167,8 @@ export default function VirtualToursView() {
   const [packIdx, setPackIdx] = useState(0);
   const [addonsOn, setAddonsOn] = useState(() => new Set());
 
-  const total = PACKS[packIdx].price + [...addonsOn].reduce((sum, i) => sum + ADDONS[i].price, 0);
+  const total =
+    PACKS[packIdx].cents + [...addonsOn].reduce((sum, i) => sum + ADDONS[i].cents, 0);
 
   const toggleAddon = (i) => {
     setAddonsOn((prev) => {
@@ -586,7 +533,7 @@ export default function VirtualToursView() {
               <div className="pn-menu">
                 <span className="pn-menu-caret" aria-hidden="true" />
                 {SERVICE_LINKS.map((l) => (
-                  <a key={l.href} href={l.href} aria-current={l.href === HERE ? "page" : undefined}>
+                  <a key={l.href} href={l.href} aria-current={l.isCurrent ? "page" : undefined}>
                     {l.label}
                   </a>
                 ))}
@@ -598,6 +545,7 @@ export default function VirtualToursView() {
             <a className="pn-item" href="/#testimonials">
               Reviews
             </a>
+            <NavAuth />
             <a className="pn-item pn-cta" href="/">
               Build my event
             </a>
@@ -629,9 +577,9 @@ export default function VirtualToursView() {
         <nav className="menu-nav" id="menuNav">
           {MENU_LINKS.map((l) => (
             <a
-              key={l.label}
+              key={l.href}
               href={l.href}
-              aria-current={l.href === HERE ? "page" : undefined}
+              aria-current={l.isCurrent ? "page" : undefined}
               onClick={() => setMenu(false)}
             >
               <span className="idx">{l.idx}</span>
@@ -687,9 +635,9 @@ export default function VirtualToursView() {
             </p>
             <div className="sp-points stagger">
               {INTRO_POINTS.map((pt) => (
-                <div className="sp-point" key={pt.n}>
-                  <div className="n">{pt.n}</div>
-                  <p>{pt.p}</p>
+                <div className="sp-point" key={pt.name}>
+                  <div className="n">{pt.name}</div>
+                  <p>{pt.text}</p>
                 </div>
               ))}
             </div>
@@ -715,12 +663,12 @@ export default function VirtualToursView() {
                 {PACKS.map((p, i) => (
                   <button
                     type="button"
-                    key={p.name}
+                    key={p.key}
                     className={`pv-pack${packIdx === i ? " on" : ""}`}
                     onClick={() => setPackIdx(i)}
                   >
                     <span className="nm">{p.name}</span>
-                    <span className="pr">{money(p.price)}</span>
+                    <span className="pr">{money(p.cents)}</span>
                   </button>
                 ))}
               </div>
@@ -728,7 +676,7 @@ export default function VirtualToursView() {
               <div className="addons">
                 {ADDONS.map((a, i) => (
                   <div
-                    key={a.name}
+                    key={a.key}
                     className={`addon${addonsOn.has(i) ? " on" : ""}`}
                     role="button"
                     tabIndex={0}
@@ -741,7 +689,7 @@ export default function VirtualToursView() {
                   >
                     <span className="nm">{a.name}</span>
                     <span className="rt">
-                      <span className="pr">+{money(a.price)}</span>
+                      <span className="pr">+{money(a.cents)}</span>
                       <span className="chk">
                         <span>✓</span>
                       </span>
@@ -806,14 +754,14 @@ export default function VirtualToursView() {
           <h2 className="rise">Questions</h2>
           <div className="rise">
             {FAQS.map((f, i) => (
-              <div className={`faq-item${openFaq.has(i) ? " open" : ""}`} key={f.q}>
+              <div className={`faq-item${openFaq.has(i) ? " open" : ""}`} key={f.question}>
                 <button
                   className="faq-q"
                   type="button"
                   aria-expanded={openFaq.has(i)}
                   onClick={() => toggleFaq(i)}
                 >
-                  {f.q}
+                  {f.question}
                   <span className="faq-ic" aria-hidden="true">
                     +
                   </span>
@@ -824,7 +772,7 @@ export default function VirtualToursView() {
                     faqRefs.current[i] = el;
                   }}
                 >
-                  <p>{f.a}</p>
+                  <p>{f.answer}</p>
                 </div>
               </div>
             ))}
@@ -850,54 +798,7 @@ export default function VirtualToursView() {
         </div>
       </section>
 
-      <footer className="foot">
-        <div className="wrap">
-          <div className="cols">
-            <div>
-              <div className="logo">
-                <Logo />
-              </div>
-              <p className="desc">
-                One request. Whole event covered. A Raleigh marketplace for celebrations and
-                commercial media.
-              </p>
-            </div>
-            <div>
-              <h4>Services</h4>
-              {SERVICE_LINKS.map((l) => (
-                <a className="fl" href={l.href} key={l.href}>
-                  {l.label}
-                </a>
-              ))}
-            </div>
-            <div>
-              <h4>Company</h4>
-              <a className="fl" href="/#about">
-                About
-              </a>
-              <a className="fl" href="/#testimonials">
-                Reviews
-              </a>
-              <a className="fl" href="/">
-                Home
-              </a>
-            </div>
-            <div>
-              <h4>Get started</h4>
-              <a className="fl" href="/">
-                Build my event
-              </a>
-              <a className="fl" href="/#events">
-                Featured events
-              </a>
-            </div>
-          </div>
-          <div className="fine">
-            <span>© 2026 Events &amp; Media · Demo build · noindex</span>
-            <span>Privacy · Terms · Synthetic data only</span>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

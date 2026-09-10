@@ -1,0 +1,103 @@
+/* Navbar account control — see app/components/NavAuth.jsx.
+
+   Only the parts each route's stylesheet has no rule for are defined here. The
+   "Sign in" button and the avatar menu deliberately keep `.pn-item`,
+   `.pn-drop`, `.pn-menu` and `.pn-menu-caret` so they pick up that page's own
+   nav styling; everything below is namespaced `.na-*` and layered on top.
+
+   Selectors carry the extra `.na-*` class where they override a `.pn-*`
+   declaration, so specificity settles the cascade rather than the order the
+   two stylesheets happen to land in the bundle. */
+
+/* Signed out: an outlined pill, so it reads as an action next to the plain
+   nav links without competing with the filled `.pn-cta` beside it. */
+.pn-item.na-signin {
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: #f4f3ee;
+  border-radius: 999px;
+  padding: 9px 18px;
+  margin-right: 4px;
+  text-decoration: none;
+  transition: border-color 0.22s, background 0.22s, color 0.22s;
+}
+.pn-item.na-signin:hover {
+  border-color: rgba(151, 196, 89, 0.75);
+  background: rgba(151, 196, 89, 0.14);
+  color: #fff;
+}
+
+/* Signed in: the initials disc. Sized and coloured like the account avatar on
+   the dashboard hero so the two read as the same person. */
+.pn-item.na-trigger {
+  padding: 4px 6px;
+  margin-left: 2px;
+  border-radius: 999px;
+  text-decoration: none;
+}
+.na-trigger .na-avatar {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #97c459;
+  color: #0d0d0c;
+  font-family: "Space Grotesk", system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.22), 0 4px 14px rgba(0, 0, 0, 0.28);
+  transition: box-shadow 0.22s, transform 0.22s;
+}
+.na-trigger:hover .na-avatar,
+.na-drop.open .na-trigger .na-avatar {
+  transform: translateY(-1px);
+  box-shadow: 0 0 0 2px rgba(151, 196, 89, 0.55), 0 6px 18px rgba(0, 0, 0, 0.34);
+}
+
+/* Wider than the Services menu beside it: a full email address is the widest
+   thing in here, and truncating the one line that identifies who is signed in
+   defeats the point of showing it. The double class beats `.pn-menu`'s own
+   min-width whichever order the two stylesheets land in. */
+.pn-menu.na-menu {
+  min-width: 264px;
+}
+
+/* The menu's identity header. `.pn-menu` styles anchors only, so this block
+   needs its own rules; the divider keeps it from reading as a menu item. */
+.na-menu .na-who {
+  display: block;
+  padding: 8px 14px 12px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+}
+.na-menu .na-who b {
+  display: block;
+  font-family: "Space Grotesk", system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.na-menu .na-who i {
+  display: block;
+  font-style: normal;
+  font-family: "Space Mono", monospace;
+  font-size: 11px;
+  color: #b9b8b0;
+  margin-top: 3px;
+  max-width: 232px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.na-menu a[aria-disabled="true"] {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+/* Below the pill nav's breakpoint the whole `.pill-nav` is hidden, so there is
+   nothing to size here — the control disappears with the rest of it. */

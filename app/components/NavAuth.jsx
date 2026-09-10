@@ -139,6 +139,11 @@ export default function NavAuth() {
         <a href="/dashboard" role="menuitem" onClick={() => setOpen(false)}>
           Profile
         </a>
+        {user.role === "admin" && (
+          <a href="/admin" role="menuitem" onClick={() => setOpen(false)}>
+            Admin
+          </a>
+        )}
         <a href="/signin" role="menuitem" onClick={handleSignOut} aria-disabled={leaving}>
           {leaving ? "Signing out…" : "Sign out"}
         </a>

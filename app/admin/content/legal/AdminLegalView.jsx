@@ -6,12 +6,15 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminTable from "../../_components/AdminTable";
-import { TextField, SubmitButton } from "../../_components/fields";
+import { TextField, JsonField, SubmitButton } from "../../_components/fields";
 import { getAdminLegalDocuments, createAdminLegalDocument } from "../../../../lib/api";
 import { handleAdminAuthError, useAdminToken } from "../../_lib/useAdminToken";
 
 const PAGE_SIZE = 20;
-const BLANK = { slug: "", title: "", kicker: "", summary: "", updatedLabel: "" };
+// Mirrors the POST /admin/legal-documents body. `sections` is required by the
+// API — omitting it made every create a 422 — so the form starts it as an
+// empty array and the detail route is where it actually gets written.
+const BLANK = { slug: "", title: "", kicker: "", summary: "", updatedLabel: "", sections: [] };
 
 const stamp = (secs) => (typeof secs === "number" ? new Date(secs * 1000).toLocaleDateString() : "—");
 
@@ -61,7 +64,10 @@ export default function AdminLegalView() {
     setSaving(true);
     setHint("");
     try {
-      const created = await createAdminLegalDocument(draft, token);
+      const created = await createAdminLegalDocument(
+        { ...draft, sections: Array.isArray(draft.sections) ? draft.sections : [] },
+        token,
+      );
       router.push(`/admin/content/legal/${created.slug}`);
     } catch (err) {
       if (handleAdminAuthError(err)) return;
@@ -92,6 +98,7 @@ export default function AdminLegalView() {
             <TextField label="Kicker" value={draft.kicker} onChange={set("kicker")} />
             <TextField label="Summary" value={draft.summary} onChange={set("summary")} />
             <TextField label="Updated label" value={draft.updatedLabel} onChange={set("updatedLabel")} />
+            <JsonField label="Sections (JSON)" value={draft.sections} onChange={set("sections")} rows={6} />
             {hint && <div className="ad-hint error">{hint}</div>}
             <SubmitButton pending={saving}>Create document</SubmitButton>
           </form>

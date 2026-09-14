@@ -53,7 +53,15 @@ export default function AdminContentPageDetailView({ slug }) {
     try {
       const updated = await updateAdminContentPage(
         slug,
-        { title: form.title, kicker: form.kicker, summary: form.summary, hero: form.hero, sections: form.sections },
+        {
+          title: form.title,
+          kicker: form.kicker,
+          summary: form.summary,
+          // An emptied JSON textarea leaves null; the columns are an object
+          // and an array, and the API accepts nothing else.
+          hero: form.hero ?? {},
+          sections: form.sections ?? [],
+        },
         token,
       );
       setForm(updated);

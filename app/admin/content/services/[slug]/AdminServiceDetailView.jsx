@@ -89,10 +89,18 @@ export default function AdminServiceDetailView({ slug }) {
     const input = {
       ...form,
       priceCents: form.priceCents === "" ? undefined : form.priceCents,
+      priceUnit: form.priceUnit === "" ? null : form.priceUnit,
       sortOrder: form.sortOrder === "" ? undefined : form.sortOrder,
+      // Emptying a JSON textarea leaves null, but the column is an object and
+      // the API only accepts one. An emptied hero means "no hero", which is {}.
+      hero: form.hero ?? {},
     };
     if (blocksDirty) {
-      input.blocks = blocks.map(({ _key, id, ...rest }) => ({ ...(typeof id === "number" ? { id } : {}), ...rest }));
+      input.blocks = blocks.map(({ _key, id, ...rest }) => ({
+        ...rest,
+        sortOrder: rest.sortOrder === "" ? 0 : rest.sortOrder,
+        payload: rest.payload ?? {},
+      }));
     }
     try {
       const updated = await updateAdminService(slug, input, token);

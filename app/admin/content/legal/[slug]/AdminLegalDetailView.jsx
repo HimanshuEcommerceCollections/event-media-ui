@@ -53,7 +53,14 @@ export default function AdminLegalDetailView({ slug }) {
     try {
       const updated = await updateAdminLegalDocument(
         slug,
-        { title: form.title, kicker: form.kicker, summary: form.summary, updatedLabel: form.updatedLabel, sections: form.sections },
+        {
+          title: form.title,
+          kicker: form.kicker,
+          summary: form.summary,
+          updatedLabel: form.updatedLabel,
+          // An emptied JSON textarea leaves null; the column is an array.
+          sections: form.sections ?? [],
+        },
         token,
       );
       setForm(updated);

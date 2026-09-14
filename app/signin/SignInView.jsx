@@ -33,6 +33,15 @@ const STRENGTH_IDLE = "Use 8+ characters with a number & symbol.";
 
 const emailOk = (v) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v);
 
+const DEFAULT_NEXT = "/build";
+
+/**
+ * A ?next= value is only followed when it is a path on this site. A leading
+ * "//" or a scheme would make it somebody else's origin, which turns the
+ * sign-in page into an open redirect.
+ */
+const safeNext = (raw) => (typeof raw === "string" && /^\/(?!\/)/.test(raw) ? raw : DEFAULT_NEXT);
+
 function scoreOf(v) {
   let s = 0;
   if (v.length >= 8) s++;
@@ -141,6 +150,12 @@ export default function SignInView() {
 
   const [perk, setPerk] = useState(null);
   const [perkHint, setPerkHint] = useState(null);
+  // Where "Continue →" goes once the session exists. A guarded route that
+  // bounced the visitor here (app/admin/layout.jsx does) appends ?next=, and
+  // without honouring it the admin lands on /build instead of the page they
+  // asked for. Read from window rather than useSearchParams() so this stays a
+  // plain client component with no Suspense boundary to add.
+  const [nextPath, setNextPath] = useState(DEFAULT_NEXT);
 
   // Held in a ref, not state: the scratch-card effect is set up once and would
   // otherwise capture a stale token.
@@ -294,6 +309,10 @@ export default function SignInView() {
   }, [perk, burst]);
 
   /* ---------- flow ---------- */
+  useEffect(() => {
+    setNextPath(safeNext(new URLSearchParams(window.location.search).get("next")));
+  }, []);
+
   const finish = useCallback((t, serverPerk) => {
     setStage("done");
     // The gift is chosen and recorded server-side, so it survives a reload and
@@ -826,7 +845,7 @@ export default function SignInView() {
               >
                 {perkHint}
               </div>
-              <a className="sub-btn" href="/build" style={{ textDecoration: "none" }}>
+              <a className="sub-btn" href={nextPath} style={{ textDecoration: "none" }}>
                 Continue →
               </a>
             </div>

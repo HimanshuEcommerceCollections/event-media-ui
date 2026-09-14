@@ -9,16 +9,21 @@
 // same submit-time validation — name non-empty, email against
 // /^[^@\s]+@[^@\s]+\.[^@\s]+$/ — painting `.bad` on the offending field.
 //
-// The application form does not post anywhere, exactly as in the reference:
-// it swaps itself for the confirmation panel and nothing leaves the browser.
-// There is no vendor-application endpoint on the backend, so wiring it up
-// needs a backend route first.
+// The application form posts to POST /api/v1/vendors/applications. The
+// reference's single "category" select is a multi-select of real service
+// slugs, because that is what the endpoint takes and a vendor usually covers
+// more than one; the slugs come from GET /vendors/service-types, with the
+// reference's own list as the offline fallback. Choosing drone work reveals
+// the Part-107 block the endpoint requires — collected as typed and never
+// presented as a certification, exactly as the backend stores it.
 //
 // Link mapping follows the other ported pages: home → "/", the services menu
 // → "/services/*", Events → the landing page anchor, and the rest to their
 // own routes.
 
 import { useEffect, useRef, useState } from "react";
+import { ApiError, getVendorApplication, getVendorServiceTypes, submitVendorApplication } from "../../lib/api";
+import { loadSession } from "../../lib/session";
 import "./vendors.css";
 import NavAuth from "../components/NavAuth";
 import SiteFooter from "../components/SiteFooter";
@@ -129,15 +134,33 @@ const CRAFTS = [
 // What a pro keeps after the platform fee the note mentions.
 const TAKE_HOME = 0.88;
 
-const CATEGORIES = [
-  "DJ + music",
-  "Photo + video",
-  "Entertainer",
-  "Party rentals",
-  "Drone pilot",
-  "Virtual tours",
-  "Other",
+// What the form falls back to when /vendors/service-types cannot be reached.
+// The slugs are the catalogue's own, so an application submitted offline-ish
+// still names services the server will recognise.
+const FALLBACK_SERVICES = [
+  { key: "dj-music", label: "DJ + music", requiresPart107: false, isB2b: false },
+  { key: "photo-video", label: "Photo + video", requiresPart107: false, isB2b: false },
+  { key: "entertainers", label: "Entertainers", requiresPart107: false, isB2b: false },
+  { key: "party-rentals", label: "Party rentals", requiresPart107: false, isB2b: false },
+  { key: "drone-video", label: "Drone video", requiresPart107: true, isB2b: false },
+  { key: "virtual-tours", label: "Virtual tours", requiresPart107: false, isB2b: true },
 ];
+
+const REFERENCE = /^EVV-\d{4}-\d{4,}$/;
+
+const BLANK_FORM = {
+  contactName: "",
+  businessName: "",
+  email: "",
+  phone: "",
+  website: "",
+  serviceArea: "",
+  yearsActive: "",
+  portfolioUrl: "",
+  notes: "",
+  certificateNumber: "",
+  expiresOn: "",
+};
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
@@ -154,15 +177,19 @@ export default function VendorsView() {
   const [dropOpen, setDropOpen] = useState(false);
   const [craftIdx, setCraftIdx] = useState(0);
   const [jobs, setJobs] = useState(6);
-  const [form, setForm] = useState({
-    name: "",
-    business: "",
-    email: "",
-    category: CATEGORIES[0],
-    about: "",
-  });
-  const [bad, setBad] = useState({ name: false, email: false });
-  const [sent, setSent] = useState(false);
+  const [form, setForm] = useState(BLANK_FORM);
+  const [services, setServices] = useState(FALLBACK_SERVICES);
+  const [picked, setPicked] = useState([]);
+  const [bad, setBad] = useState({});
+  const [hint, setHint] = useState("");
+  const [sending, setSending] = useState(false);
+  // The submitted application, once the server has it. Carries the EVV
+  // reference, which is the only thing the applicant needs to keep.
+  const [sent, setSent] = useState(null);
+
+  const [lookup, setLookup] = useState("");
+  const [lookupHint, setLookupHint] = useState("");
+  const [found, setFound] = useState(null);
 
   /* ---------- scroll reveals ---------- */
   useEffect(() => {
@@ -200,15 +227,116 @@ export default function VendorsView() {
     return () => document.removeEventListener("click", onDoc);
   }, [dropOpen]);
 
+  /* ---------- what can be applied for ---------- */
+  useEffect(() => {
+    let live = true;
+    getVendorServiceTypes()
+      .then((rows) => {
+        if (live && Array.isArray(rows) && rows.length > 0) setServices(rows);
+      })
+      .catch(() => {
+        // The API is down or blocked. FALLBACK_SERVICES already names the
+        // catalogue's slugs, so the form stays usable rather than empty.
+      });
+    return () => {
+      live = false;
+    };
+  }, []);
+
   /* ---------- application form ---------- */
   const set = (key) => (e) => setForm((prev) => ({ ...prev, [key]: e.target.value }));
 
-  const onSubmit = (e) => {
+  const togglePick = (key) =>
+    setPicked((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
+
+  // The backend asks for Part-107 details when drone work is among the
+  // services, so the block appears exactly when the catalogue says it applies.
+  const needsPart107 = services.some((s) => s.requiresPart107 && picked.includes(s.key));
+
+  const onSubmit = async (e) => {
     e.preventDefault();
-    const next = { name: !form.name.trim(), email: !EMAIL.test(form.email) };
+
+    const next = {
+      contactName: form.contactName.trim().length < 2,
+      businessName: form.businessName.trim().length < 2,
+      email: !EMAIL.test(form.email),
+      services: picked.length === 0,
+      certificateNumber: needsPart107 && !form.certificateNumber.trim(),
+    };
     setBad(next);
-    if (next.name || next.email) return;
-    setSent(true);
+    setHint("");
+    if (Object.values(next).some(Boolean)) return;
+
+    const trimmed = (v) => {
+      const t = v.trim();
+      return t === "" ? undefined : t;
+    };
+
+    const body = {
+      businessName: form.businessName.trim(),
+      contactName: form.contactName.trim(),
+      email: form.email.trim(),
+      serviceTypes: picked,
+      phone: trimmed(form.phone),
+      website: trimmed(form.website),
+      serviceArea: trimmed(form.serviceArea),
+      yearsActive: form.yearsActive === "" ? undefined : Number(form.yearsActive),
+      portfolioUrl: trimmed(form.portfolioUrl),
+      notes: trimmed(form.notes),
+      ...(needsPart107
+        ? {
+            part107: {
+              certificateNumber: form.certificateNumber.trim(),
+              expiresOn: trimmed(form.expiresOn),
+            },
+          }
+        : {}),
+    };
+
+    setSending(true);
+    try {
+      // A signed-in applicant gets the application tied to their account, so
+      // approving it later finds the user that already exists.
+      const application = await submitVendorApplication(body, loadSession()?.accessToken);
+      setSent(application);
+      setForm(BLANK_FORM);
+      setPicked([]);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        const fields = err.fieldErrors();
+        setBad({
+          contactName: "contactName" in fields,
+          businessName: "businessName" in fields,
+          email: "email" in fields,
+          services: "serviceTypes" in fields,
+          certificateNumber: Object.keys(fields).some((f) => f.startsWith("part107")),
+        });
+        setHint(err.message);
+      } else {
+        setHint("Something went wrong. Try again.");
+      }
+    } finally {
+      setSending(false);
+    }
+  };
+
+  /* ---------- checking an application already sent ---------- */
+  const onLookup = async (e) => {
+    e.preventDefault();
+    const reference = lookup.trim().toUpperCase();
+    setFound(null);
+    if (!REFERENCE.test(reference)) {
+      setLookupHint("References look like EVV-2026-0001.");
+      return;
+    }
+    setLookupHint("");
+    try {
+      setFound(await getVendorApplication(reference));
+    } catch (err) {
+      setLookupHint(
+        err instanceof ApiError ? err.message : "Could not check that reference right now.",
+      );
+    }
   };
 
   const monthly = CRAFTS[craftIdx].rate * jobs * TAKE_HOME;
@@ -377,28 +505,30 @@ export default function VendorsView() {
             <div className="vform rise">
               <form noValidate onSubmit={onSubmit}>
                 <div className="frow">
-                  <div className={`field${bad.name ? " bad" : ""}`}>
+                  <div className={`field${bad.contactName ? " bad" : ""}`}>
                     <label htmlFor="v-name">Your name</label>
                     <input
                       id="v-name"
                       type="text"
                       placeholder="Name"
-                      value={form.name}
-                      onChange={set("name")}
+                      value={form.contactName}
+                      onChange={set("contactName")}
                     />
                     <div className="err">Please enter your name.</div>
                   </div>
-                  <div className="field">
+                  <div className={`field${bad.businessName ? " bad" : ""}`}>
                     <label htmlFor="v-biz">Business name</label>
                     <input
                       id="v-biz"
                       type="text"
-                      placeholder="Optional"
-                      value={form.business}
-                      onChange={set("business")}
+                      placeholder="What you trade as"
+                      value={form.businessName}
+                      onChange={set("businessName")}
                     />
+                    <div className="err">Please enter your business name.</div>
                   </div>
                 </div>
+
                 <div className="frow">
                   <div className={`field${bad.email ? " bad" : ""}`}>
                     <label htmlFor="v-email">Email</label>
@@ -412,29 +542,144 @@ export default function VendorsView() {
                     <div className="err">Enter a valid email.</div>
                   </div>
                   <div className="field">
-                    <label htmlFor="v-cat">Category</label>
-                    <select id="v-cat" value={form.category} onChange={set("category")}>
-                      {CATEGORIES.map((c) => (
-                        <option key={c}>{c}</option>
-                      ))}
-                    </select>
+                    <label htmlFor="v-phone">Phone</label>
+                    <input
+                      id="v-phone"
+                      type="tel"
+                      placeholder="Optional"
+                      value={form.phone}
+                      onChange={set("phone")}
+                    />
                   </div>
                 </div>
+
+                <div className={`field${bad.services ? " bad" : ""}`}>
+                  <label>What do you provide?</label>
+                  <div className="va-picks">
+                    {services.map((service) => (
+                      <label
+                        key={service.key}
+                        className={`va-pick${picked.includes(service.key) ? " on" : ""}`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={picked.includes(service.key)}
+                          onChange={() => togglePick(service.key)}
+                        />
+                        {service.label}
+                        {service.isB2b ? <span className="b2b">B2B</span> : null}
+                      </label>
+                    ))}
+                  </div>
+                  <div className="err">Choose at least one service you provide.</div>
+                </div>
+
+                {needsPart107 && (
+                  <div className="va-sub">
+                    <h4>Part 107</h4>
+                    {/* Collected, never checked. The wording says so rather
+                        than implying that sending the number verifies it —
+                        the same caveat the backend stores the record with. */}
+                    <p className="note">
+                      Drone work needs your remote pilot certificate on file. We record what you
+                      type here for the coordinator to check against your paperwork — we do not
+                      verify it against the FAA registry.
+                    </p>
+                    <div className="frow">
+                      <div className={`field${bad.certificateNumber ? " bad" : ""}`}>
+                        <label htmlFor="v-cert">Certificate number</label>
+                        <input
+                          id="v-cert"
+                          type="text"
+                          placeholder="e.g. 4001234"
+                          value={form.certificateNumber}
+                          onChange={set("certificateNumber")}
+                        />
+                        <div className="err">Enter your Part-107 certificate number.</div>
+                      </div>
+                      <div className="field">
+                        <label htmlFor="v-cert-exp">Expires on</label>
+                        <input
+                          id="v-cert-exp"
+                          type="date"
+                          value={form.expiresOn}
+                          onChange={set("expiresOn")}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="frow">
+                  <div className="field">
+                    <label htmlFor="v-area">Service area</label>
+                    <input
+                      id="v-area"
+                      type="text"
+                      placeholder="Cities or counties you cover"
+                      value={form.serviceArea}
+                      onChange={set("serviceArea")}
+                    />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="v-years">Years active</label>
+                    <input
+                      id="v-years"
+                      type="number"
+                      min="0"
+                      max="100"
+                      placeholder="Optional"
+                      value={form.yearsActive}
+                      onChange={set("yearsActive")}
+                    />
+                  </div>
+                </div>
+
+                <div className="frow">
+                  <div className="field">
+                    <label htmlFor="v-site">Website</label>
+                    <input
+                      id="v-site"
+                      type="url"
+                      placeholder="https://"
+                      value={form.website}
+                      onChange={set("website")}
+                    />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="v-portfolio">Portfolio</label>
+                    <input
+                      id="v-portfolio"
+                      type="url"
+                      placeholder="https://"
+                      value={form.portfolioUrl}
+                      onChange={set("portfolioUrl")}
+                    />
+                  </div>
+                </div>
+
                 <div className="field">
                   <label htmlFor="v-about">Tell us about your work</label>
                   <textarea
                     id="v-about"
-                    placeholder="Years of experience, service area, a link to your work..."
-                    value={form.about}
-                    onChange={set("about")}
+                    placeholder="Kit you bring, the events you like, anything a coordinator should know..."
+                    value={form.notes}
+                    onChange={set("notes")}
                   />
                 </div>
-                <button className="v-send" type="submit">
-                  Submit application
+
+                <p className={`va-hint${hint ? " error" : ""}`}>
+                  {hint ||
+                    "We review new pros within 3 business days. You will get a reference to quote."}
+                </p>
+
+                <button className="v-send" type="submit" disabled={sending}>
+                  {sending ? "Sending…" : "Submit application"}
                 </button>
               </form>
             </div>
           )}
+
           <div className={`vform v-ok${sent ? " on" : ""}`}>
             <div className="ck">
               <LineIcon>
@@ -445,6 +690,45 @@ export default function VendorsView() {
             <p style={{ color: "var(--tx2)", marginTop: "8px" }}>
               Thanks for applying — our team reviews new pros within 3 business days.
             </p>
+            {sent?.reference ? (
+              <>
+                <div className="va-ref">{sent.reference}</div>
+                <p style={{ color: "var(--tx2)", fontSize: ".88rem" }}>
+                  Keep this reference. Quote it if you follow up, and check on it below. Once you
+                  are approved we email you a link that sets a password and opens your vendor
+                  dashboard.
+                </p>
+              </>
+            ) : null}
+          </div>
+
+          {/* Applying and checking are both public: an applicant has no
+              account to sign into until they have been approved. */}
+          <div className="va-lookup rise">
+            <p className="eyebrow">Already applied?</p>
+            <form noValidate onSubmit={onLookup}>
+              <input
+                type="text"
+                placeholder="EVV-2026-0001"
+                aria-label="Application reference"
+                value={lookup}
+                onChange={(e) => setLookup(e.target.value)}
+              />
+              <button type="submit">Check status</button>
+            </form>
+            {lookupHint ? (
+              <p className="found" style={{ color: "#d0492f" }}>
+                {lookupHint}
+              </p>
+            ) : null}
+            {found ? (
+              <p className="found">
+                <b>{found.businessName}</b> — {String(found.status).replace("_", " ")}
+                {found.status === "approved"
+                  ? " · check your email for the link that opens your dashboard"
+                  : ""}
+              </p>
+            ) : null}
           </div>
         </div>
       </section>

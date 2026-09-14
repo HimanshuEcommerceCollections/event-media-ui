@@ -10,6 +10,7 @@ import { handleAdminAuthError, useAdminToken } from "./_lib/useAdminToken";
 
 const BOOKING_STATUSES = ["new", "confirmed", "in_progress", "completed", "cancelled"];
 const VENDOR_STATUSES = ["new", "reviewing", "approved", "rejected"];
+const ASSIGNMENT_STATUSES = ["offered", "accepted", "completed", "declined", "withdrawn"];
 
 function StatusBreakdown({ byStatus, statuses }) {
   return (
@@ -80,6 +81,25 @@ export default function AdminOverviewView() {
             <div className="ad-card">
               <h3>Users</h3>
               <div className="n">{summary?.users?.total ?? 0}</div>
+            </div>
+            {/* Applications above, accounts here: an approved application
+                that never became an account is the gap worth seeing. */}
+            <div className="ad-card">
+              <h3>Vendor accounts</h3>
+              <div className="n">{summary?.vendorAccounts?.total ?? 0}</div>
+              <div className="breakdown">
+                <span className="ad-badge st-approved">
+                  active: {summary?.vendorAccounts?.active ?? 0}
+                </span>
+              </div>
+            </div>
+            <div className="ad-card">
+              <h3>Vendor offers</h3>
+              <div className="n">{summary?.assignments?.total ?? 0}</div>
+              <StatusBreakdown
+                byStatus={summary?.assignments?.byStatus}
+                statuses={ASSIGNMENT_STATUSES}
+              />
             </div>
           </div>
 

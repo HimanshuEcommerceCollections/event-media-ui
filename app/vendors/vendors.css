@@ -111,3 +111,34 @@ a{color:inherit;text-decoration:none}img{display:block;max-width:100%}
 .est-slider input{box-shadow:0 1px 4px rgba(0,0,0,.3)}
 
 
+
+/* ------------------------------------------------------------------ apply */
+/* Added beyond the reference stylesheet: the reference's form was a single
+   "category" select that posted nowhere, and the real endpoint takes a list of
+   service slugs plus the Part-107 block that drone work asks for. Namespaced
+   `va-*` so nothing here collides with the ported rules above. */
+
+.va-picks{display:flex;flex-wrap:wrap;gap:8px}
+.va-pick{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--bd);border-radius:999px;padding:9px 14px;font-size:.88rem;cursor:pointer;background:var(--card);transition:border-color .16s,background .16s}
+.va-pick:hover{border-color:var(--ond2)}
+.va-pick input{accent-color:var(--accent);margin:0}
+.va-pick.on{border-color:var(--accent);background:var(--accent-soft)}
+.va-pick .b2b{font-family:var(--fmono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3)}
+
+.va-sub{background:var(--sunken);border:1px solid var(--bd);border-radius:14px;padding:18px 18px 4px;margin-bottom:16px}
+.va-sub h4{font-family:var(--fdisp);font-size:.98rem;margin:0 0 4px}
+.va-sub .note{color:var(--tx2);font-size:.82rem;line-height:1.5;margin:0 0 14px}
+
+.va-hint{font-family:var(--fmono);font-size:11px;color:var(--tx3);line-height:1.6;margin:0 0 16px}
+.va-hint.error{color:#d0492f}
+
+.va-ref{font-family:var(--fmono);font-size:1.15rem;letter-spacing:.06em;color:var(--txacc);background:var(--accent-soft);border:1px dashed var(--accent-2);border-radius:12px;padding:12px 18px;display:inline-block;margin:14px 0 4px}
+
+.va-lookup{max-width:620px;margin:22px auto 0;text-align:center}
+.va-lookup form{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+.va-lookup input{border:1px solid var(--bd);border-radius:11px;padding:11px 14px;font-family:var(--fmono);font-size:.9rem;background:var(--card);color:var(--tx);min-width:220px;text-transform:uppercase}
+.va-lookup input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(99,153,34,.12)}
+.va-lookup button{border:1px solid var(--bd);background:var(--card);border-radius:11px;padding:11px 18px;font-family:var(--fsans);font-weight:600;font-size:.9rem;cursor:pointer}
+.va-lookup button:hover{border-color:var(--accent)}
+.va-lookup .found{margin-top:14px;font-size:.92rem;color:var(--tx2)}
+.va-lookup .found b{color:var(--tx)}

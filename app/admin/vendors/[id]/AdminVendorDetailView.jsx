@@ -2,6 +2,12 @@
 
 // /admin/vendors/:id — full VendorDto readout plus a status <select> that
 // calls PATCH /admin/vendors/:id/status.
+//
+// Moving the status to "approved" does more than label the row: the server
+// creates the vendor account behind it and emails an invite. The reply says
+// which of those happened, and this page reports it — an approval whose
+// invite did not send looks exactly like one that did, and the coordinator is
+// the only person who can chase it.
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -49,7 +55,18 @@ export default function AdminVendorDetailView({ id }) {
     try {
       const updated = await updateAdminVendorStatus(id, next, token);
       setVendor(updated);
-      setHint("Saved.");
+      const account = updated.account;
+      if (account?.accountCreated) {
+        setHint(
+          account.inviteSent
+            ? "Approved — the vendor account was created and the invite has been emailed."
+            : "Approved and the account was created, but the invite email did not go out. Ask them to use “Forgot password” with this address.",
+        );
+      } else if (account) {
+        setHint("Approved — this application already had an account.");
+      } else {
+        setHint("Saved.");
+      }
     } catch (err) {
       if (handleAdminAuthError(err)) return;
       setVendor((v) => ({ ...v, status: prev }));
@@ -89,10 +106,23 @@ export default function AdminVendorDetailView({ id }) {
               ))}
             </select>
             {hint && (
-              <div className={`ad-hint${/could not/i.test(hint) ? " error" : ""}`} style={{ marginTop: 8 }}>
+              <div
+                className={`ad-hint${/could not|did not go out/i.test(hint) ? " error" : ""}`}
+                style={{ marginTop: 8 }}
+              >
                 {hint}
               </div>
             )}
+            {vendor.vendorId ? (
+              <p style={{ marginTop: 10 }}>
+                <Link
+                  href={`/admin/vendors/accounts/${vendor.vendorId}`}
+                  style={{ color: "#3b6d11", fontSize: "0.88rem" }}
+                >
+                  Open the vendor account →
+                </Link>
+              </p>
+            ) : null}
           </div>
 
           <div className="ad-section">

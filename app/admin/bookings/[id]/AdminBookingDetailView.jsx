@@ -6,6 +6,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getAdminBooking, updateAdminBookingStatus } from "../../../../lib/api";
+import AssignmentPanel from "../../_components/AssignmentPanel";
 import { handleAdminAuthError, useAdminToken } from "../../_lib/useAdminToken";
 
 const STATUSES = ["new", "confirmed", "in_progress", "completed", "cancelled"];
@@ -224,6 +225,11 @@ export default function AdminBookingDetailView({ id }) {
             <h2>Notes</h2>
             <p style={{ whiteSpace: "pre-wrap", fontSize: "0.88rem" }}>{booking.notes || "—"}</p>
           </div>
+
+          {/* Who is actually delivering each line. Its own component because
+              it owns four calls of its own and re-fetches independently of
+              the booking above it. */}
+          <AssignmentPanel bookingId={id} token={token} />
         </>
       )}
     </>

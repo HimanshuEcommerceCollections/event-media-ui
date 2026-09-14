@@ -79,7 +79,12 @@ export default function AdminBundleDetailView({ slug }) {
       isActive: form.isActive,
     };
     if (itemsDirty) {
-      input.items = items.map(({ _key, id, ...rest }) => ({ ...(typeof id === "number" ? { id } : {}), ...rest }));
+      // An emptied JSON textarea leaves null; the API wants an object.
+      input.items = items.map(({ _key, id, ...rest }) => ({
+        ...rest,
+        sortOrder: rest.sortOrder === "" ? 0 : rest.sortOrder,
+        configuration: rest.configuration ?? {},
+      }));
     }
     try {
       const updated = await updateAdminBundle(slug, input, token);

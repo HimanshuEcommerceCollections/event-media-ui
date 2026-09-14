@@ -25,7 +25,9 @@ export default function AdminGalleryDetailView({ id }) {
     setLoading(true);
     getAdminGalleryItem(id, token)
       .then((data) => {
-        if (live) setForm(data);
+        // `caption` is nullable in the database. Held as "" here so the input
+        // is controlled and so a save does not post back a bare null.
+        if (live) setForm({ ...data, caption: data.caption ?? "" });
       })
       .catch((err) => {
         if (!live || handleAdminAuthError(err)) return;
@@ -48,10 +50,14 @@ export default function AdminGalleryDetailView({ id }) {
     try {
       const updated = await updateAdminGalleryItem(
         id,
-        { ...form, sortOrder: form.sortOrder === "" ? undefined : form.sortOrder },
+        {
+          ...form,
+          caption: form.caption === "" ? null : form.caption,
+          sortOrder: form.sortOrder === "" ? undefined : form.sortOrder,
+        },
         token,
       );
-      setForm(updated);
+      setForm({ ...updated, caption: updated.caption ?? "" });
       setHint("Saved.");
     } catch (err) {
       if (handleAdminAuthError(err)) return;

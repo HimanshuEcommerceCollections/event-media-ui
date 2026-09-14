@@ -20,6 +20,7 @@ const NAV = [
   { href: "/admin", label: "Dashboard" },
   { href: "/admin/bookings", label: "Bookings" },
   { href: "/admin/vendors", label: "Vendors" },
+  { href: "/admin/vendors/accounts", label: "Vendor accounts" },
   { href: "/admin/users", label: "Users" },
   { href: "/admin/analytics", label: "Analytics" },
 ];
@@ -83,7 +84,14 @@ export default function AdminLayout({ children }) {
     );
   }
 
-  const isOn = (href) => (href === "/admin" ? pathname === href : pathname?.startsWith(href));
+  // Longest match wins. Plain startsWith would light both "Vendors" and
+  // "Vendor accounts" on /admin/vendors/accounts, and matching only exactly
+  // would leave nothing lit on a detail route like /admin/vendors/ven_1.
+  const current = [...NAV, ...CONTENT_NAV]
+    .map((n) => n.href)
+    .filter((href) => (href === "/admin" ? pathname === href : pathname?.startsWith(href)))
+    .sort((a, b) => b.length - a.length)[0];
+  const isOn = (href) => href === current;
 
   return (
     <div className="ad-shell">

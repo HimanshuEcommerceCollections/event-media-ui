@@ -439,6 +439,26 @@
   background: #fbe4e0;
   color: #8a3320;
 }
+/* Assignment statuses. Offered reads as "waiting on someone" like a new
+   booking; accepted and completed borrow the confirmed/completed greens;
+   declined and withdrawn share the rejected red. */
+.ad-badge.st-offered {
+  background: #fdf3d8;
+  border-color: #eedfaa;
+  color: #7a5c07;
+}
+.ad-badge.st-accepted {
+  background: var(--accent-soft);
+  border-color: var(--accent-2);
+  color: #33590a;
+}
+.ad-badge.st-declined,
+.ad-badge.st-withdrawn {
+  background: #f6e7e3;
+  border-color: #e8c5bc;
+  color: #8a2f1c;
+}
+
 .ad-badge.st-admin {
   background: var(--ink-900);
   color: #fff;

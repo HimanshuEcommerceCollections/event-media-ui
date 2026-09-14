@@ -11,7 +11,18 @@ import { getAdminBundles, createAdminBundle } from "../../../../lib/api";
 import { handleAdminAuthError, useAdminToken } from "../../_lib/useAdminToken";
 
 const PAGE_SIZE = 20;
-const BLANK = { slug: "", name: "", tagline: "", blurb: "", eventType: "", badge: "", isActive: true };
+// Mirrors the POST /admin/bundles body. `sortOrder` is required by the API,
+// so leaving it off the form made every create a 422.
+const BLANK = {
+  slug: "",
+  name: "",
+  tagline: "",
+  blurb: "",
+  eventType: "",
+  badge: "",
+  sortOrder: "",
+  isActive: true,
+};
 
 const COLUMNS = [
   { key: "name", label: "Name" },
@@ -60,7 +71,14 @@ export default function AdminBundlesView() {
     setSaving(true);
     setHint("");
     try {
-      const created = await createAdminBundle(draft, token);
+      const created = await createAdminBundle(
+        {
+          ...draft,
+          badge: draft.badge === "" ? undefined : draft.badge,
+          sortOrder: draft.sortOrder === "" ? 0 : draft.sortOrder,
+        },
+        token,
+      );
       router.push(`/admin/content/bundles/${created.slug}`);
     } catch (err) {
       if (handleAdminAuthError(err)) return;
@@ -88,10 +106,11 @@ export default function AdminBundlesView() {
           <form className="ad-form" onSubmit={onCreate}>
             <TextField label="Slug" value={draft.slug} onChange={set("slug")} required />
             <TextField label="Name" value={draft.name} onChange={set("name")} required />
-            <TextField label="Tagline" value={draft.tagline} onChange={set("tagline")} />
-            <TextField label="Blurb" value={draft.blurb} onChange={set("blurb")} />
-            <TextField label="Event type" value={draft.eventType} onChange={set("eventType")} />
+            <TextField label="Tagline" value={draft.tagline} onChange={set("tagline")} required />
+            <TextField label="Blurb" value={draft.blurb} onChange={set("blurb")} required />
+            <TextField label="Event type" value={draft.eventType} onChange={set("eventType")} required />
             <TextField label="Badge" value={draft.badge} onChange={set("badge")} />
+            <TextField label="Sort order" type="number" value={draft.sortOrder} onChange={set("sortOrder")} />
             <ToggleField label="Active" checked={draft.isActive} onChange={set("isActive")} />
             {hint && <div className="ad-hint error">{hint}</div>}
             <SubmitButton pending={saving}>Create bundle</SubmitButton>

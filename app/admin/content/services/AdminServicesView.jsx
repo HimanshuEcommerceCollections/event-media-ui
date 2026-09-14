@@ -22,7 +22,24 @@ const COLUMNS = [
   { key: "sortOrder", label: "Sort" },
 ];
 
-const BLANK = { slug: "", title: "", blurb: "", priceLabel: "", priceCents: "", priceUnit: "", isB2b: false, isActive: true };
+// Mirrors the POST /admin/services body. `no`, `imagePath`, `imageAlt`,
+// `iconKey` and `sortOrder` are required by the API, so they belong on the
+// form — without them every create came back 422 before the row was reached.
+const BLANK = {
+  slug: "",
+  no: "",
+  title: "",
+  blurb: "",
+  priceLabel: "",
+  priceCents: "",
+  priceUnit: "",
+  imagePath: "",
+  imageAlt: "",
+  iconKey: "",
+  sortOrder: "",
+  isB2b: false,
+  isActive: true,
+};
 
 export default function AdminServicesView() {
   const token = useAdminToken();
@@ -65,7 +82,12 @@ export default function AdminServicesView() {
     setHint("");
     try {
       const created = await createAdminService(
-        { ...draft, priceCents: draft.priceCents === "" ? undefined : draft.priceCents },
+        {
+          ...draft,
+          priceCents: draft.priceCents === "" ? undefined : draft.priceCents,
+          priceUnit: draft.priceUnit === "" ? undefined : draft.priceUnit,
+          sortOrder: draft.sortOrder === "" ? 0 : draft.sortOrder,
+        },
         token,
       );
       router.push(`/admin/content/services/${created.slug}`);
@@ -94,11 +116,22 @@ export default function AdminServicesView() {
           <h2>New service</h2>
           <form className="ad-form" onSubmit={onCreate}>
             <TextField label="Slug" value={draft.slug} onChange={set("slug")} required />
+            <TextField label="No." value={draft.no} onChange={set("no")} placeholder="01" required />
             <TextField label="Title" value={draft.title} onChange={set("title")} required />
-            <TextField label="Blurb" value={draft.blurb} onChange={set("blurb")} />
-            <TextField label="Price label" value={draft.priceLabel} onChange={set("priceLabel")} />
+            <TextField label="Blurb" value={draft.blurb} onChange={set("blurb")} required />
+            <TextField label="Price label" value={draft.priceLabel} onChange={set("priceLabel")} required />
             <TextField label="Price (cents)" type="number" value={draft.priceCents} onChange={set("priceCents")} />
             <TextField label="Price unit" value={draft.priceUnit} onChange={set("priceUnit")} />
+            <TextField
+              label="Image path"
+              value={draft.imagePath}
+              onChange={set("imagePath")}
+              placeholder="/assets/services/example.jpg"
+              required
+            />
+            <TextField label="Image alt" value={draft.imageAlt} onChange={set("imageAlt")} required />
+            <TextField label="Icon key" value={draft.iconKey} onChange={set("iconKey")} required />
+            <TextField label="Sort order" type="number" value={draft.sortOrder} onChange={set("sortOrder")} />
             <ToggleField label="B2B" checked={draft.isB2b} onChange={set("isB2b")} />
             <ToggleField label="Active" checked={draft.isActive} onChange={set("isActive")} />
             {hint && <div className="ad-hint error">{hint}</div>}

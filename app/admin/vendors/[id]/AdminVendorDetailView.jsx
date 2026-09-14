@@ -116,8 +116,6 @@ export default function AdminVendorDetailView({ id }) {
               <dd>{vendor.serviceArea || "—"}</dd>
               <dt>Has insurance</dt>
               <dd>{vendor.hasInsurance ? "Yes" : "No"}</dd>
-              <dt>Part 107</dt>
-              <dd>{vendor.part107 ? "Yes" : "No"}</dd>
               <dt>Portfolio</dt>
               <dd>{vendor.portfolioUrl || "—"}</dd>
               <dt>Applied</dt>
@@ -125,6 +123,32 @@ export default function AdminVendorDetailView({ id }) {
               <dt>Updated</dt>
               <dd>{stamp(vendor.updatedAt)}</dd>
             </dl>
+          </div>
+
+          <div className="ad-section">
+            <h2>Part 107</h2>
+            {vendor.part107 ? (
+              <>
+                <dl className="ad-kv">
+                  <dt>Certificate number</dt>
+                  <dd>{vendor.part107.certificateNumber || "—"}</dd>
+                  <dt>Expires on</dt>
+                  <dd>{vendor.part107.expiresOn || "—"}</dd>
+                  <dt>Document</dt>
+                  <dd>{vendor.part107.documentName || "—"}</dd>
+                </dl>
+                {/* Nothing checks these against the FAA — see the backend's
+                    vendors.service.ts. Saying so here keeps a reviewer from
+                    reading the number as proof of anything. */}
+                <p style={{ color: "var(--tx3)", fontSize: "0.8rem", marginTop: 8 }}>
+                  As submitted by the applicant. Not verified against the FAA registry.
+                </p>
+              </>
+            ) : (
+              <p style={{ color: "var(--tx3)", fontSize: "0.85rem" }}>
+                Not collected — this applicant did not apply for drone work.
+              </p>
+            )}
           </div>
 
           <div className="ad-section">

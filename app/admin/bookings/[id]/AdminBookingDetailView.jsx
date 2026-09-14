@@ -15,6 +15,23 @@ const money = (cents) =>
 
 const stamp = (secs) => (typeof secs === "number" ? new Date(secs * 1000).toLocaleString() : "—");
 
+/**
+ * One line's `configuration` in a sentence. Its keys depend on which of the
+ * four pricing models built it (see the backend's pricing.types.ts), so this
+ * names the ones that are present rather than assuming a shape.
+ */
+function describeConfiguration(config) {
+  if (!config || typeof config !== "object") return "—";
+  const parts = [];
+  const quantities = Object.entries(config.quantities ?? {}).filter(([, n]) => n > 0);
+  if (quantities.length) parts.push(quantities.map(([key, n]) => `${key} ×${n}`).join(", "));
+  if (config.performer) parts.push(config.performer);
+  if (config.pack) parts.push(config.pack);
+  if (typeof config.hours === "number") parts.push(`${config.hours} hr`);
+  if (Array.isArray(config.addons) && config.addons.length) parts.push(`+ ${config.addons.join(", ")}`);
+  return parts.length ? parts.join(" · ") : "—";
+}
+
 export default function AdminBookingDetailView({ id }) {
   const token = useAdminToken();
   const [booking, setBooking] = useState(null);
@@ -61,6 +78,11 @@ export default function AdminBookingDetailView({ id }) {
       setSaving(false);
     }
   };
+
+  // Stored as PricedLine[] and returned verbatim by the admin API, so the
+  // amount key here is `lineCents` — the public booking DTO's `linePrice`
+  // rename does not apply to this endpoint.
+  const lines = Array.isArray(booking?.lineItems) ? booking.lineItems : [];
 
   return (
     <>
@@ -140,27 +162,59 @@ export default function AdminBookingDetailView({ id }) {
 
           <div className="ad-section">
             <h2>Line items</h2>
-            {Array.isArray(booking.lineItems) && booking.lineItems.length ? (
-              <table className="ad-table" style={{ border: "none" }}>
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Detail</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {booking.lineItems.map((item, i) => (
-                    <tr key={i}>
-                      <td>{i + 1}</td>
-                      <td>
-                        <pre style={{ margin: 0, whiteSpace: "pre-wrap", fontFamily: "var(--fmono)", fontSize: 11.5 }}>
-                          {typeof item === "string" ? item : JSON.stringify(item, null, 2)}
-                        </pre>
+            {lines.length ? (
+              <>
+                <table className="ad-table" style={{ border: "none" }}>
+                  <thead>
+                    <tr>
+                      <th>Service</th>
+                      <th>Configured</th>
+                      <th style={{ textAlign: "right" }}>Line total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {lines.map((item, i) => (
+                      <tr key={`${item.serviceType}-${i}`}>
+                        <td>
+                          <b>{item.label || item.serviceType}</b>
+                          <div style={{ color: "var(--tx3)", fontFamily: "var(--fmono)", fontSize: 11 }}>
+                            {item.serviceType}
+                            {item.bundleId ? ` · bundle ${item.bundleId}` : ""}
+                          </div>
+                          {Array.isArray(item.breakdown) && item.breakdown.length > 0 && (
+                            <ul style={{ margin: "8px 0 0", paddingLeft: 16, color: "var(--tx3)", fontSize: "0.8rem" }}>
+                              {item.breakdown.map((part, j) => (
+                                <li key={j}>
+                                  {part.label}
+                                  {part.detail ? ` — ${part.detail}` : ""} · {money(part.cents)}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </td>
+                        <td>{describeConfiguration(item.configuration)}</td>
+                        <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>{money(item.lineCents)}</td>
+                      </tr>
+                    ))}
+                    <tr>
+                      <td colSpan={2} style={{ textAlign: "right" }}>
+                        <b>Package total</b>
+                      </td>
+                      <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                        <b>{money(booking.packageTotal)}</b>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </tbody>
+                </table>
+                <details style={{ marginTop: 12 }}>
+                  <summary style={{ cursor: "pointer", color: "var(--tx3)", fontSize: "0.82rem" }}>
+                    Raw line items
+                  </summary>
+                  <pre style={{ whiteSpace: "pre-wrap", fontFamily: "var(--fmono)", fontSize: 11.5 }}>
+                    {JSON.stringify(booking.lineItems, null, 2)}
+                  </pre>
+                </details>
+              </>
             ) : (
               <p style={{ color: "var(--tx3)", fontSize: "0.85rem" }}>No line items.</p>
             )}

@@ -1,0 +1,620 @@
+/* Vendor portal shell and its building blocks. Imported once by
+   app/vendor/layout.jsx, which wraps every /vendor route, so no child page
+   re-imports it.
+
+   Same palette and type scale as app/admin/admin.css and
+   app/dashboard/dashboard.css — this is the same signed-in product seen from
+   the other side of the table — but its own `vd-*` namespace and its own
+   file, because every route in this app owns its CSS (see app/layout.jsx) and
+   nothing here should be able to shift the admin's layout or vice versa.
+
+   The sidebar is lighter than the admin's near-black: a vendor is a guest in
+   the product, not its operator, and the two shells should not be mistaken
+   for each other at a glance. */
+
+:root {
+  --ink-900: #0d0d0c;
+  --page: #f7f6f1;
+  --card: #fff;
+  --sunken: #f1efe8;
+  --tx: #0d0d0c;
+  --tx2: #55554f;
+  --tx3: #888780;
+  --accent: #639922;
+  --accent-2: #97c459;
+  --accent-soft: #eef6e2;
+  --bd: #e3e1d7;
+  --bds: #cbc9bd;
+  --gold: #e0b341;
+  --danger: #d0492f;
+  --fdisp: "Space Grotesk", system-ui, sans-serif;
+  --fsans: "Inter", system-ui, sans-serif;
+  --fmono: "Space Mono", monospace;
+}
+
+.vd-shell,
+.vd-shell * {
+  box-sizing: border-box;
+}
+.vd-shell {
+  font-family: var(--fsans);
+  color: var(--tx);
+  background: var(--page);
+  min-height: 100vh;
+  display: flex;
+  align-items: stretch;
+}
+
+/* ------------------------------------------------------------------ gate */
+.vd-gate {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: var(--page);
+  font-family: var(--fsans);
+  padding: 24px;
+}
+.vd-gate-card {
+  background: var(--card);
+  border: 1px solid var(--bd);
+  border-radius: 16px;
+  padding: 30px 34px;
+  max-width: 460px;
+  color: var(--tx2);
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+.vd-gate-card h1 {
+  font-family: var(--fdisp);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--tx);
+  font-size: 1.3rem;
+  margin: 0 0 8px;
+}
+.vd-gate-card .waiting {
+  font-family: var(--fmono);
+  font-size: 13px;
+  color: var(--tx3);
+}
+.vd-gate-card a.cta {
+  display: inline-block;
+  margin-top: 16px;
+  background: var(--accent);
+  color: var(--ink-900);
+  border-radius: 10px;
+  padding: 11px 18px;
+  font-weight: 700;
+  font-size: 0.92rem;
+  text-decoration: none;
+}
+.vd-gate-card a.cta:hover {
+  background: var(--accent-2);
+}
+
+/* --------------------------------------------------------------- sidebar */
+.vd-sidebar {
+  width: 232px;
+  flex: none;
+  background: #1c1b19;
+  color: #f4f3ee;
+  padding: 22px 16px 24px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.vd-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #fff;
+  padding: 4px 8px 12px;
+  text-decoration: none;
+}
+.vd-brand .rings {
+  display: flex;
+}
+.vd-brand .rings i {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  display: block;
+}
+.vd-brand .rings i:first-child {
+  border-color: var(--accent-2);
+  margin-right: -5px;
+}
+.vd-brand b {
+  font-family: var(--fdisp);
+  font-size: 15px;
+}
+.vd-sidebar-tag {
+  font-family: var(--fmono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent-2);
+  padding: 0 8px 18px;
+}
+.vd-biz {
+  padding: 0 8px 18px;
+  font-size: 0.88rem;
+  color: #cfcdc4;
+  line-height: 1.4;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 16px;
+}
+.vd-biz b {
+  display: block;
+  color: #fff;
+  font-size: 0.95rem;
+}
+.vd-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.vd-nav a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: 9px;
+  color: #cfcdc4;
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: background 0.15s, color 0.15s;
+}
+.vd-nav a:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: #fff;
+}
+.vd-nav a.on {
+  background: var(--accent);
+  color: var(--ink-900);
+  font-weight: 600;
+}
+.vd-nav .pip {
+  background: var(--gold);
+  color: var(--ink-900);
+  border-radius: 999px;
+  font-family: var(--fmono);
+  font-size: 10px;
+  padding: 2px 7px;
+  font-weight: 700;
+}
+.vd-sidebar-foot {
+  margin-top: auto;
+  padding: 16px 8px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+.vd-sidebar-foot a,
+.vd-sidebar-foot button {
+  display: block;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  font-family: var(--fsans);
+  font-size: 0.84rem;
+  color: #9a978e;
+  text-decoration: none;
+  cursor: pointer;
+  margin-bottom: 8px;
+}
+.vd-sidebar-foot a:hover,
+.vd-sidebar-foot button:hover {
+  color: #fff;
+}
+
+/* ------------------------------------------------------------------ main */
+.vd-main {
+  flex: 1;
+  min-width: 0;
+  padding: 30px 34px 60px;
+}
+.vd-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 24px;
+}
+.vd-head h1 {
+  font-family: var(--fdisp);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-size: 1.6rem;
+  margin: 0 0 4px;
+}
+.vd-head p {
+  color: var(--tx2);
+  font-size: 0.9rem;
+  margin: 0;
+}
+.vd-back {
+  display: inline-block;
+  font-family: var(--fmono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--tx3);
+  text-decoration: none;
+  margin-bottom: 16px;
+}
+.vd-back:hover {
+  color: var(--accent);
+}
+
+.vd-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 14px;
+  margin-bottom: 26px;
+}
+.vd-card {
+  background: var(--card);
+  border: 1px solid var(--bd);
+  border-radius: 14px;
+  padding: 18px 20px;
+}
+.vd-card h3 {
+  font-family: var(--fmono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--tx3);
+  margin: 0 0 8px;
+  font-weight: 400;
+}
+.vd-card .n {
+  font-family: var(--fdisp);
+  font-size: 1.9rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.vd-card .sub {
+  color: var(--tx2);
+  font-size: 0.82rem;
+  margin-top: 4px;
+}
+
+.vd-section {
+  background: var(--card);
+  border: 1px solid var(--bd);
+  border-radius: 14px;
+  padding: 22px 24px;
+  margin-bottom: 20px;
+}
+.vd-section h2 {
+  font-family: var(--fdisp);
+  font-weight: 600;
+  font-size: 1.05rem;
+  margin: 0 0 14px;
+}
+
+.vd-kv {
+  display: grid;
+  grid-template-columns: minmax(130px, 200px) 1fr;
+  gap: 8px 18px;
+  margin: 0;
+  font-size: 0.9rem;
+}
+.vd-kv dt {
+  font-family: var(--fmono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--tx3);
+  padding-top: 3px;
+}
+.vd-kv dd {
+  margin: 0;
+  color: var(--tx);
+  word-break: break-word;
+}
+
+/* ---------------------------------------------------------------- badges */
+.vd-badge {
+  display: inline-block;
+  font-family: var(--fmono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: var(--sunken);
+  color: var(--tx2);
+  border: 1px solid var(--bd);
+  white-space: nowrap;
+}
+.vd-badge.st-offered {
+  background: #fdf3d8;
+  border-color: #eedfaa;
+  color: #7a5c07;
+}
+.vd-badge.st-accepted {
+  background: var(--accent-soft);
+  border-color: var(--accent-2);
+  color: #33590a;
+}
+.vd-badge.st-completed {
+  background: #e7efe1;
+  border-color: #c5d6b6;
+  color: #2f4a17;
+}
+.vd-badge.st-declined,
+.vd-badge.st-withdrawn {
+  background: #f6e7e3;
+  border-color: #e8c5bc;
+  color: #8a2f1c;
+}
+
+/* ----------------------------------------------------------------- lists */
+.vd-jobs {
+  display: grid;
+  gap: 12px;
+}
+.vd-job {
+  display: block;
+  background: var(--card);
+  border: 1px solid var(--bd);
+  border-radius: 14px;
+  padding: 18px 20px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s, transform 0.12s;
+}
+.vd-job:hover {
+  border-color: var(--bds);
+  transform: translateY(-1px);
+}
+.vd-job .top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.vd-job .title {
+  font-family: var(--fdisp);
+  font-weight: 600;
+  font-size: 1.02rem;
+}
+.vd-job .meta {
+  color: var(--tx2);
+  font-size: 0.86rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+.vd-job .pay {
+  font-family: var(--fmono);
+  font-size: 0.95rem;
+  color: var(--tx);
+}
+
+.vd-empty {
+  background: var(--card);
+  border: 1px dashed var(--bds);
+  border-radius: 14px;
+  padding: 34px 24px;
+  text-align: center;
+  color: var(--tx2);
+  font-size: 0.92rem;
+}
+
+.vd-msg {
+  font-family: var(--fmono);
+  font-size: 12px;
+  color: var(--tx3);
+}
+.vd-msg.error {
+  color: var(--danger);
+}
+
+/* ----------------------------------------------------------------- forms */
+.vd-form {
+  display: grid;
+  gap: 14px;
+  max-width: 560px;
+}
+.vd-field label {
+  display: block;
+  font-family: var(--fmono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--tx3);
+  margin-bottom: 6px;
+}
+.vd-field input,
+.vd-field textarea {
+  width: 100%;
+  border: 1px solid var(--bd);
+  border-radius: 10px;
+  padding: 11px 13px;
+  font-family: var(--fsans);
+  font-size: 0.93rem;
+  background: var(--card);
+  color: var(--tx);
+}
+.vd-field textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+.vd-field input:focus,
+.vd-field textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(99, 153, 34, 0.12);
+}
+.vd-field.bad input,
+.vd-field.bad textarea {
+  border-color: var(--danger);
+}
+.vd-err {
+  color: var(--danger);
+  font-size: 0.78rem;
+  margin-top: 5px;
+}
+.vd-hint {
+  font-family: var(--fmono);
+  font-size: 11px;
+  color: var(--tx3);
+  line-height: 1.6;
+}
+.vd-hint.error {
+  color: var(--danger);
+}
+
+.vd-check {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 0.9rem;
+  color: var(--tx2);
+  cursor: pointer;
+}
+.vd-check input {
+  accent-color: var(--accent);
+}
+
+.vd-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.vd-btn {
+  background: var(--accent);
+  color: var(--ink-900);
+  border: none;
+  border-radius: 10px;
+  padding: 11px 20px;
+  font-family: var(--fsans);
+  font-weight: 700;
+  font-size: 0.92rem;
+  cursor: pointer;
+  transition: background 0.18s, transform 0.12s;
+}
+.vd-btn:hover:not(:disabled) {
+  background: var(--accent-2);
+  transform: translateY(-1px);
+}
+.vd-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+  transform: none;
+}
+.vd-btn.ghost {
+  background: var(--card);
+  border: 1px solid var(--bd);
+  color: var(--tx);
+  font-weight: 600;
+}
+.vd-btn.ghost:hover:not(:disabled) {
+  background: var(--sunken);
+  border-color: var(--bds);
+}
+.vd-btn.danger {
+  background: var(--card);
+  border: 1px solid #e8c5bc;
+  color: var(--danger);
+  font-weight: 600;
+}
+.vd-btn.danger:hover:not(:disabled) {
+  background: #fbf1ee;
+}
+
+.vd-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.vd-toolbar button {
+  background: var(--card);
+  border: 1px solid var(--bd);
+  border-radius: 999px;
+  padding: 8px 15px;
+  font-family: var(--fsans);
+  font-size: 0.86rem;
+  color: var(--tx2);
+  cursor: pointer;
+}
+.vd-toolbar button.on {
+  background: var(--ink-900);
+  border-color: var(--ink-900);
+  color: #fff;
+  font-weight: 600;
+}
+
+.vd-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+  font-family: var(--fmono);
+  font-size: 11px;
+  color: var(--tx3);
+}
+.vd-pager button {
+  background: var(--card);
+  border: 1px solid var(--bd);
+  border-radius: 8px;
+  padding: 7px 13px;
+  font-family: var(--fsans);
+  font-size: 0.84rem;
+  cursor: pointer;
+}
+.vd-pager button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* The one place the portal deliberately says less than it knows: a job that
+   has not been accepted shows no customer contact details. */
+.vd-locked {
+  background: var(--sunken);
+  border: 1px dashed var(--bds);
+  border-radius: 12px;
+  padding: 16px 18px;
+  color: var(--tx2);
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+@media (max-width: 860px) {
+  .vd-shell {
+    flex-direction: column;
+  }
+  .vd-sidebar {
+    width: 100%;
+    height: auto;
+    position: static;
+    padding: 16px;
+  }
+  .vd-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .vd-sidebar-foot {
+    margin-top: 16px;
+  }
+  .vd-main {
+    padding: 22px 18px 48px;
+  }
+  .vd-kv {
+    grid-template-columns: 1fr;
+    gap: 2px 0;
+  }
+  .vd-kv dd {
+    margin-bottom: 10px;
+  }
+}
